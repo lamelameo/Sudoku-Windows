@@ -1,5 +1,5 @@
 # Sudoku-Windows
-My first programming project - a simple sudoku game for windows written in a single, slightly messy python script.
+My first programming project - a simple sudoku game for windows written in a single, messy python script.
 Running the program will create a savefile folder in the same directory as the script.
 
 Requirements:
