@@ -8,6 +8,11 @@ import pathlib
 
 
 def start_states():
+    # there are 50 sets of starting states in the easy puzzle file, each 81 numbers of a grid is split into 10 lines
+    # lines are split using \n so doesnt appear in .txt file when viewed in notepad
+    # the first line is an identifier and then there are 9 lines of numbers corresponding to each row of the grid
+    # concatenate all the lines into one string and strip the first 7 letters corresponding to the identifier line
+    # result is 81 characters long, each character is a grid cells starting value - either 0 (empty) or an integer 1-9
 
     file = open('sudokuezpuzzles.txt', 'r')
     sudoku = []
@@ -17,11 +22,6 @@ def start_states():
     #print(sudoku)
     file.close()
 
-    # there are 50 sets of starting states in the easy puzzle file, each 81 numbers of a grid is split into 10 lines
-    # lines are split using \n so doesnt appear in .txt file when viewed in notepad
-    # the first line is an identifier and then there are 9 lines of numbers corresponding to each row of the grid
-    # concatenate all the lines into one string and strip the first 7 letters corresponding to the identifier line
-    # result is 81 characters long, each character is a grid cells starting value - either 0 (empty) or an integer 1-9
     easystates = []
     for x in range(50):
         newstring = ''
@@ -109,7 +109,7 @@ class Position:
 
 
 def positionobjects():
-    # make position objects named '0' - '81' from left to right top to bottom in 9x9 grid
+    # make position objects named '0' - '81' from left to right, top to bottom in 9x9 grid
     position_names = [str(x) for x in range(1, 82)]
     for name in position_names:
         Position(name)
@@ -118,10 +118,12 @@ def positionobjects():
     (a, b, c, d, e, f) = (30, 30, 70, 70, 65, 65)  # (x, y, w, h, xcentre, ycentre)
 
     # creating sets for coordinates for positions in each row
-    positions_coordinates = []
-    for x1 in range(1, 10):
-        for y1 in range(1, 10):
-            positions_coordinates.append((a, b, c, d, e, f))
+    # positions_coordinates = []
+    for x1 in range(9):
+        for y1 in range(9):
+            index = str(x1*9 + y1+1)  # the position in the grid in string form, 1-81
+            # adding coordinates to the corresponding position class objects
+            Position.positiondict[index].coordinates = (a, b, c, d, e, f)
             # add width to x and xcentre with each new position in row
             a += 70
             e += 70
@@ -132,64 +134,40 @@ def positionobjects():
         a = 30
         e = 65
 
-    # adding coordinates to the corresponding position class objects
-    counter = 0
-    for key in position_names:
-        Position.positiondict[key].coordinates = positions_coordinates[counter]
-        counter += 1
-
     # set pencil coordinates for position objects
     # each position has a set of 9 sets containing (x, y) coordinates
+    pencil_coordinates = ((44, 44.5), (67, 44.5), (86, 44.5),
+                          (44, 67), (67, 67), (86, 67),
+                          (44, 89.5), (67, 89.5), (86, 89.5))
 
-    (a1, b1, c1, d1, e1, f1, g1, h1, i1) = ((44, 44.5), (67, 44.5), (86, 44.5),
-                                            (44, 67), (67, 67), (86, 67),
-                                            (44, 89.5), (67, 89.5), (86, 89.5))
-
-    # ----------------@@@@@@@----- NOTE -----@@@@@@@@-----------------------------------------------------------------|
-    # had to set a variable to each set of coords to be able to manipulate later...                                   |
-    # had a set of 9 list coords which were appended to a new list then altered in a loop to generate new coordinates |
-    # then the new coordinates appended to the new list... ended up changing all the previously appended coords in the|
-    # new list so all my sets of 9 list for coords had the same 9 values...                                           |
-    # ----------------------------------------------------------------------------------------------------------------|
-
-    pencil_coordinates = []
+    # Increment the pencil values for each position - iterating through 9 values x 9 rows
+    # pencil_coordinates = []
     for num1 in range(9):
         for num2 in range(9):
+            index = str(num1*9 + num2+1)  # the position in the grid as a string, 1-81
             listt = []
-            for item in (a1, b1, c1, d1, e1, f1, g1, h1, i1):  # creates a variable called item for each set of coords
+            # iterate through all coordinates and increase the values in x or y depending on it position in the grid
+            for item in pencil_coordinates:
                 item = (item[0] + (num2 * 70), item[1] + (num1 * 70))
                 listt.append(item)
-            pencil_coordinates.append(listt)
-
-    # print('coordinates[0]:', pencil_coordinates[0], 'coordinates[80]', pencil_coordinates[80])
-    # print('abcd', (a1, b1, c1, d1, e1, f1, g1, h1, i1))
-
-    # adding pencil coordinates to each position object
-    counter = 0
-    for key in position_names:
-        Position.positiondict[key].pencil_coordinates = pencil_coordinates[counter]
-        counter += 1
+            # add coordinates to the corresponding position class attributes
+            Position.positiondict[index].pencil_coordinates = listt
 
 
 def set_starting_state(difficulty, state_num=0):
-
-    if difficulty == 'hard':  # have chosen a hard difficulty puzzle
-        state = start_states()[1][state_num]  # string with number for each position..81 chars long..0 for empty
-        count = 0
-        for pos in Position.positiondict:
-            Position.positiondict[pos].start_state = state[count]  # sets as either '0' for changeable or 'int' for not
-            Position.positiondict[pos].value = 'set'+state[count]  # sets the position value to an integer
-            count += 1
-    else:  # have chose an easy difficulty puzzle
-        state = start_states()[0][state_num]  # string with number for each position..81 chars long..0 for empty
-        count = 0
-        for pos in Position.positiondict:
-            Position.positiondict[pos].start_state = state[count]
-            Position.positiondict[pos].value = 'set'+state[count]
-            count += 1
+    # set the positions starting values from the saved lists given a difficulty (easy=0, hard=1) and puzzle number
+    state = start_states()[difficulty][state_num]  # string with number for each position..81 chars long..0 for empty
+    count = 0
+    for pos in Position.positiondict:
+        Position.positiondict[pos].start_state = state[count]  # sets as either '0' for changeable or 'int' for not
+        Position.positiondict[pos].value = 'set'+state[count]  # sets the position value to an integer
+        count += 1
 
 
 def rules():
+    # checks if each group (row, column, block) contains values 1-9, if so it will return an image indicating
+    # the solution is correct, else if any group doesnt pass then an error image is given
+    # TODO: can change so that it only check values and make the lists after creation of position objects - is faster?
 
     rows = []  # list for each row, each element is a position in that row
     columns = []  # list for each column, each element is a position in that column
@@ -220,7 +198,6 @@ def rules():
         newblock = []
         blocks.append(newblock)
     for num1 in range(9):  # for each row
-        #counter = 0  # reset counter each loop
         if num1 in [0, 1, 2]:
             counter2 = 0  # for first 3 rows insert into first 3 blocks
         elif num1 in [3, 4, 5]:
@@ -229,89 +206,51 @@ def rules():
             counter2 = 6  # for 3rd 3 rows insert into last 3 blocks
         for num2 in range(3):  # for each position in the row (3 x 3 nested loops)
             for num3 in range(3):  # append groups of 3 values from that row into 3 the blocks that overlap that row
-                counter = num2*3 + num3
-                blocks[counter2].append(rows[num1][counter])
-                #counter += 1
+                index = num2*3 + num3
+                blocks[counter2].append(rows[num1][index])
             counter2 += 1  # change the block after 3 row values are added
 
     # checking position values against rules
-    win = 1
-    count = 1
     values = ['set1', 'set2', 'set3', 'set4', 'set5', 'set6', 'set7', 'set8', 'set9']  # position values
-    for row in rows:  # for each row
-        for value in values:  # check for each value
-            if value in row:
-                #print('right')
-                pass
-            else:
-                win = 0
-                print('ROW'+str(count), 'ERROR')
-                break
-                #return False
-        count += 1
-    count = 1
-    for column in columns:  # for each row
-        for value in values:  # check for each value
-            if value in column:
-                #print('right')
-                pass
-            else:
-                win = 0
-                print('COLUMN'+str(count), 'ERROR')
-                break
-                #return False
-        count += 1
-    count = 1
-    for block in blocks:  # for each row
-        for value in values:  # check for each value
-            if value in block:
-                #print('right')
-                pass
-            else:
-                win = 0
-                print('BLOCK'+str(count), 'ERROR')
-                break
-                #return False
-        count += 1
 
-    # passed all the checks - should end game and bring up an image saying you won
-    if win == 1:
+    def check_groups(group):
+        # check each list in the group to determine if values 1-9 are present and return false at 1st error
+        group_counter = 1
+        for listitem in group:  # for each item in the group
+            for val in values:  # check for each value
+                if val not in listitem:
+                    print('ROW' + str(group_counter), 'ERROR')
+                    return False
+            group_counter += 1
+        return True  # all checks were passed so return True for this group
+
+    # if each group passed all the checks - should end game and bring up an image saying you won
+    if check_groups(rows) and check_groups(columns) and check_groups(blocks):
         try:
-            win_pic = pygame.image.load("sudoku_correct.png")
-            win_obj = win_pic.get_rect()
-            win_obj.center = (400, 345)
-            return gamescreen.blit(win_pic, win_obj)
-        except pygame.error as errorMessage:
+            get_image("sudoku_correct.png", (400, 345))
+        except pygame.error as errorMessage:  # displays text only if image cant be found
             error_text = str(errorMessage)[14:]
             win_text = "YOU WIN..." + "*Missing File: " + error_text + "*"
-            win_font = pygame.font.Font('freesansbold.ttf', 28)
-            surface_obj = win_font.render(win_text, True, BLACK, BLUE)
-            win_rect = surface_obj.get_rect()
-            win_rect.center = (346, 345)
-            return gamescreen.blit(surface_obj, win_rect)
+            Position.errorPicShown = True
+            get_text(28, win_text, BLACK, (346, 345), BLUE)
 
-    else:
+    else:  # error was found - display error image and message
         # TODO: highlight rows/columns/blocks with mistakes??
         print('\nCHECK FOR MISTAKES...\n')
         print('ROW 1-9: top-bottom\nCOLUMN 1-9: left-right\nBLOCK 1-9: left-right then top-bottom')
         try:
-            error_pic = pygame.image.load("sudoku_error.png")
-            error_obj = error_pic.get_rect()
-            error_obj.center = (400, 345)
+            get_image("sudoku_error.png", (400, 345))
             Position.errorPicShown = True
-            return gamescreen.blit(error_pic, error_obj)
-        except pygame.error as errorMessage:
+        except pygame.error as errorMessage:  # display text if error picture isnt found
             print(errorMessage)
             error_text = "Check for Mistakes. " + "*Missing File: " + str(errorMessage)[14:] + "*"
-            error_font = pygame.font.Font('freesansbold.ttf', 26)
-            surface_obj = error_font.render(error_text, True, BLACK, BLUE)
-            error_rect = surface_obj.get_rect()
-            error_rect.center = (360, 345)
             Position.errorPicShown = True
-            return gamescreen.blit(surface_obj, error_rect)
+            get_text(26, error_text, BLACK, (360, 345), BLUE)
 
 
 def clear_states():
+    # clear values for all positions if they are not starting values, leave pencil values unchanged
+    # TODO: add option for removing pencil states
     for pos in Position.positiondict:
         if Position.positiondict[pos].start_state == '0':
             Position.positiondict[pos].value = 'set0'  # reset value
@@ -356,20 +295,12 @@ class Button:
         else:
             self.state = 0
 
-    def hover(self):
-        mouse_pos = pygame.mouse.get_pos()
-        if self.coordinates[0] < mouse_pos[0] < self.coordinates[0] + self.coordinates[2]\
-                and self.coordinates[1] < mouse_pos[1] < self.coordinates[1] + self.coordinates[3]:
-            return True
-        else:
-            return False
-
     # make subclasses with integer and other buttons for diff functionality when clicked
 
 
 def buttonobjects():
 
-    intList = ['', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+    int_list = ['', '1', '2', '3', '4', '5', '6', '7', '8', '9']
     buttonlist = ['setempty', 'set1', 'set2', 'set3', 'set4', 'set5', 'set6', 'set7',
                   'set8', 'set9', 'pencil', 'clear', 'check', 'save', 'savetextbox']
     # list of coordinates for each button: (xorigin, yorigin, width, height, xcentre, ycentre)
@@ -392,81 +323,70 @@ def buttonobjects():
     # change text for integer buttons - dont want the names to appear on the button graphic just the integer
     integer = 0
     for name in buttonlist[:10]:
-        Button.buttondict[name].text = intList[integer]
+        Button.buttondict[name].text = int_list[integer]
         integer += 1
 
     Button.buttondict['savetextbox'].text = 'Enter File Name'
 
 
-# --------- not used but could insert anytime I have used text ------------------
-def get_text(size, text, text_col, coords, back_col=None):
+def get_text(size, text, text_col, coords, back_col=None, align=None):
+    # draws the given text (with set size and colour) onto the gamescreen
+    text_obj = pygame.font.Font('freesansbold.ttf', size)
+    surface_obj = text_obj.render(text, True, text_col, back_col)
+    rect_obj = surface_obj.get_rect()
+    # TODO: doesnt support all alignments
+    if align == "midleft":
+        rect_obj.midleft = coords
+    else:
+        rect_obj.center = coords
+    gamescreen.blit(surface_obj, rect_obj)
 
-    obj = pygame.font.Font('freesansbold.ttf', size)
-    SurfaceObj = obj.render(text, True, text_col, back_col)
-    Obj = SurfaceObj.get_rect()
-    Obj.center = coords
-    gamescreen.blit(SurfaceObj, Obj)
+
+def get_image(file_path, coords):
+    # draws an image onto the gamescreen given a filepath and coordinates
+    image_obj = pygame.image.load(file_path)
+    rect_obj = image_obj.get_rect()
+    rect_obj.center = coords
+    gamescreen.blit(image_obj, rect_obj)
 
 
-def drawbutton(button, fill=BLACK, size=22, font='freesansbold.ttf'):
-    # general function to make a button given coordinates and colours
+def drawbutton(button, fill=BLACK, size=22):
+    # general function to draw/redraw a button given coordinates and colours
     x = button.coordinates[0] + 1
     y = button.coordinates[1] + 1
     width = button.coordinates[2] - 2
     height = button.coordinates[3] - 2
-    # draw the button fill (for all button types)
+    button_centre = (button.coordinates[4], button.coordinates[5])
+
+    # first, draw the button fill (for all button types)
     pygame.draw.rect(gamescreen, fill, [x, y, width, height])
 
     # draw the button text
     if button.name == 'setempty':
-        try:
-            # eraser image for button
-            eraser_image = pygame.image.load('eraser3.png')
-            eraserRectObj = eraser_image.get_rect()
-            eraserRectObj.center = (752.5, 135)
-            gamescreen.blit(eraser_image, eraserRectObj)  # use eraser image instead of text for setempty
-
+        try:  # try load eraser image else use text for button
+            get_image("eraser3.png", (752.5, 135))
+        # couldnt find image, use text instead, give warning
         except pygame.error as image_error:
             print("Warning - Missing Button Image File: " + str(image_error)[14:])
             # set default eraser object as text
-            text_obj = pygame.font.Font(font, 14)
-            text_surface_obj = text_obj.render("del", True, BLUE)
-            text_rect_obj = text_surface_obj.get_rect()
-            text_rect_obj.center = (752.5, 135)
-            gamescreen.blit(text_surface_obj, text_rect_obj)
-            # try load eraser image else use text for button
+            get_text(14, "del", BLUE, (752.5, 135))
 
     elif button.name == 'savetextbox':
-        if button.state == 1:  # if textbox is active (clicked)
-            # draws text
-            textObj = pygame.font.Font(font, 14)
-            textSurfaceObj = textObj.render(button.text, True, WHITE)
-            textRectObj = textSurfaceObj.get_rect()
-            textRectObj.center = (button.coordinates[4], button.coordinates[5])
-            gamescreen.blit(textSurfaceObj, textRectObj)
-        else:
-            # draw over default black fill then draw black text
-            pygame.draw.rect(gamescreen, DGRAY, [x, y, width, height])
-            textObj = pygame.font.Font(font, 14)
-            textSurfaceObj = textObj.render(button.text, True, BLACK)
-            textRectObj = textSurfaceObj.get_rect()
-            textRectObj.center = (button.coordinates[4], button.coordinates[5])
-            gamescreen.blit(textSurfaceObj, textRectObj)
+        if button.state == 1:  # if textbox is active (clicked) draw text in white
+            get_text(14, button.text, WHITE, button_centre)
+        else:  # if inactive, draw over default black fill then draw black text
+            pygame.draw.rect(gamescreen, DGRAY, [x, y, width, height])  # draw box
+            get_text(14, button.text, BLACK, button_centre)  # draw text
+
     elif button.name in ('pencil', 'clear', 'check', 'save'):
-        textObj = pygame.font.Font(font, size)
-        textSurfaceObj = textObj.render(button.text, True, LGRAY)
-        textRectObj = textSurfaceObj.get_rect()
-        textRectObj.center = (button.coordinates[4], button.coordinates[5])
-        gamescreen.blit(textSurfaceObj, textRectObj)
-    else:  # for integer buttons
-        textObj = pygame.font.Font(font, size)
-        textSurfaceObj = textObj.render(button.text, True, BLUE)
-        textRectObj = textSurfaceObj.get_rect()
-        textRectObj.center = (button.coordinates[4], button.coordinates[5])
-        gamescreen.blit(textSurfaceObj, textRectObj)
+        get_text(size, button.text, LGRAY, button_centre)  # draw text in light gray
+
+    else:  # for integer buttons draw text in blue
+        get_text(size, button.text, BLUE, button_centre)  # draw text in light gray
 
 
 def buttonhover(default_outline=BLUE, hover_outline=WHITE):
+    # redraws a buttons outline if hovered, given an outline colour
 
     # only redraw if change of state
     mouse_pos = pygame.mouse.get_pos()
@@ -492,56 +412,31 @@ def buttonhover(default_outline=BLUE, hover_outline=WHITE):
                 pass
 
 
-def positiontext(position, default_colour=BLUE, hover_colour=None, active_colour=None,
-                 font='freesansbold.ttf'):
+def positiontext(position, default_colour=BLUE, hover_colour=None, active_colour=None):
+    # draw values/pencil for positions
     # TODO: dont know if hover colour and such should be in here ???
+
     xcentre = position.coordinates[4]
     ycentre = position.coordinates[5]
     buttonnames = ['set1', 'set2', 'set3', 'set4', 'set5', 'set6', 'set7',
                    'set8', 'set9']
-    textlist = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
 
-    if position.value in buttonnames:
-        # We have just changed from an empty state value to an integer value
-        index = buttonnames.index(position.value)
-        text = textlist[index]
+    if position.value in buttonnames:  # We have just changed the positions integer value
+        text = position.value[-1]
         position.prev_state = position.value  # update prev_state as position value has changed
+        # renders box over top of pencil values and draw position value
+        get_text(60, "   ", default_colour, (xcentre, ycentre), BLACK)
+        get_text(28, text, default_colour, (xcentre, ycentre), BLACK)
 
-        # renders cream box over top of pencil values to hide them
-        posObj = pygame.font.Font(font, 60)
-        posSurfaceObj = posObj.render('   ', True, default_colour, BLACK)
-        posRectObj = posSurfaceObj.get_rect()
-        posRectObj.center = (xcentre, ycentre)
-        gamescreen.blit(posSurfaceObj, posRectObj)
-        # renders position value integer
-        posObj = pygame.font.Font(font, 28)
-        posSurfaceObj = posObj.render(text, True, default_colour, BLACK)
-        posRectObj = posSurfaceObj.get_rect()
-        posRectObj.center = (xcentre, ycentre)
-        gamescreen.blit(posSurfaceObj, posRectObj)
-
-    elif position.value in ['setempty', 'set0']:  # the position value was removed
-
-        # big integer to empty showing pencil states: eraser, or double click with integer used
+    elif position.value in ['setempty', 'set0']:  # position value was removed by eraser or click with present value
+        # position is now empty - have to redraw to remove value and show pencil states
         if position.prev_state in buttonnames:  # removed position value
             position.prev_state = position.value
-            # draw over previous value with cream
-            posObj = pygame.font.Font(font, 28)
-            posSurfaceObj = posObj.render('  ', True, default_colour, BLACK)
-            posRectObj = posSurfaceObj.get_rect()
-            posRectObj.center = (xcentre, ycentre)
-            gamescreen.blit(posSurfaceObj, posRectObj)
-
-            #show pencil states
+            # draw over previous value
+            get_text(28, "  ", default_colour, (xcentre, ycentre), BLACK)
+            # draw pencil states
             for value in position.pencil_values:
-                int_index = int(value[3:]) - 1
-                coords = position.pencil_coordinates[int_index]
-
-                pencilObj = pygame.font.Font(font, 12)
-                pencilSurfaceObj = pencilObj.render(value[3:], True, default_colour, BLACK)
-                pencilRectObj = pencilSurfaceObj.get_rect()
-                pencilRectObj.center = (coords[0], coords[1])
-                gamescreen.blit(pencilSurfaceObj, pencilRectObj)
+                penciltext(position, mode='load', value=value)
 
         else:  # position value is unchanged from last frame or changed between 'set0' and 'setempty' - take no action
             pass
@@ -550,24 +445,24 @@ def positiontext(position, default_colour=BLUE, hover_colour=None, active_colour
         pass
 
 
-def penciltext(position, mode=None, default_colour=BLUE, hover_colour=None, active_colour=None,
-               font='freesansbold.ttf', size=12, value=None):
+def penciltext(position, mode=None, default_colour=BLUE, size=12, value=None, hover_colour=None, active_colour=None):
+    # draws pencil text in gamescreen - called if a pencil value is added or removed or loading a game
 
-    # TODO:  ---------- CLEARSTATES DOESNT AFFECT PENCIL --KEEP??? --------------
-
-    if position.value in ['set0', 'setempty', 0]:  # set0 is starting state for editable positions
-
+    if position.value in ['set0', 'setempty', 0]:  # position is empty of a value so pencil values should be visible
+        # adding a new pencil value
         if mode == 'add':
             lastvalue = position.pencil_values[-1]  # last value in pencil__values - in the form 'set1'
             coordindex = int(lastvalue[-1]) - 1  # lastvalues corresponding index in position.pencil_coordinates
             xcentre = position.pencil_coordinates[coordindex][0]
             ycentre = position.pencil_coordinates[coordindex][1]
             text = lastvalue[-1]  # text set to string of integer being added - taking only the integer part of string
+        # removing a pencil value
         elif mode == 'delete':
-            deleteindex = int(Button.activestate[-1]) - 1  # deleted values coord index in position.pencil_coordinates
-            xcentre = position.pencil_coordinates[deleteindex][0]
-            ycentre = position.pencil_coordinates[deleteindex][1]
+            coordindex = int(Button.activestate[-1]) - 1  # deleted values coord index in position.pencil_coordinates
+            xcentre = position.pencil_coordinates[coordindex][0]
+            ycentre = position.pencil_coordinates[coordindex][1]
             text = '   '  # text set to empty string to draw a cream box to remove the integer
+        # loading a saved file
         elif mode == 'load':
             coordindex = int(value[-1]) - 1
             text = value[-1]
@@ -579,11 +474,8 @@ def penciltext(position, mode=None, default_colour=BLUE, hover_colour=None, acti
             xcentre = position.coordinates[4]
             ycentre = position.coordinates[5]
 
-        posObj = pygame.font.Font(font, size)
-        posSurfaceObj = posObj.render(text, True, default_colour, BLACK)
-        posRectObj = posSurfaceObj.get_rect()
-        posRectObj.center = (xcentre, ycentre)
-        gamescreen.blit(posSurfaceObj, posRectObj)
+        # draw the text to gamescreen
+        get_text(size, text, default_colour, (xcentre, ycentre), BLACK)
 
     else:  # there is a value in this position so dont draw the pencil values
         pass
@@ -603,19 +495,13 @@ def draw_startbuttons(textcolour=BLACK, boxcolour=None, text1=None, size=16, tex
             pass
     else:
         pass
+
     if textcoords is not None:
         if textalign == 'midleft':  # align button text to left of box
-            Obj = pygame.font.Font('freesansbold.ttf', size)
-            SurfaceObj = Obj.render(text1, True, textcolour)
-            RectObj = SurfaceObj.get_rect()
-            RectObj.midleft = textcoords
-            gamescreen.blit(SurfaceObj, RectObj)
+            get_text(size, text1, textcolour, textcoords, align="midleft")
         else:  # default text align is centre
-            Obj = pygame.font.Font('freesansbold.ttf', size)
-            SurfaceObj = Obj.render(text1, True, textcolour)
-            RectObj = SurfaceObj.get_rect()
-            RectObj.center = textcoords
-            gamescreen.blit(SurfaceObj, RectObj)
+            get_text(size, text1, textcolour, textcoords)
+
     else:
         pass
 
@@ -623,61 +509,31 @@ def draw_startbuttons(textcolour=BLACK, boxcolour=None, text1=None, size=16, tex
 def startscreenbuttons():
     # function gets called only when startscreen() is called
 
-    # ----------- draws easy boxes and text -------------
-    [a, b, c, d] = [45, 190, 45, 45]
-    [e, f] = [67.5, 212.5]
-    easytext = ['easy'+str(x) for x in range(1, 51)]
-    counter = 0
-    easyboxcoords = []
-    easytextcoords = []
-    for x in range(10):
-        for y in range(5):
-            newbutt = Button(easytext[counter])
-            Button.add_startlist(newbutt)
-            easyboxcoords.append([a, b, c, d])
-            newbutt.coordinates = [a, b, c, d]
-            easytextcoords.append([e, f])
-            counter += 1
-            a += 45
-            e += 45
-        a = 45
-        e = 67.5
-        b += 45
-        f += 45
+    def incrementbuttons(boxcoords, textcoords, numboxes, colour, text):
 
-    counter = 0
-    for coord in easyboxcoords:
-        draw_startbuttons(text1=easytext[counter][4:], boxcolour=GRAY, textcolour=GREEN,
-                          textcoords=easytextcoords[counter], boxcoords=coord)
-        counter += 1
+        [a, b, c, d] = boxcoords
+        [e, f] = textcoords
+        counter = 1
+        # make a button object for each puzzle number (1-50), add its coordinates, and draw the button
+        for x in range(10):
+            for y in range(int(numboxes/10)):
+                buttontext = text + str(counter)
+                newbutt = Button(buttontext)
+                Button.add_startlist(newbutt)
+                newbutt.coordinates = [a, b, c, d]
+                draw_startbuttons(text1=buttontext[4:], boxcolour=GRAY, textcolour=colour,
+                                  textcoords=[e, f], boxcoords=[a, b, c, d])
+                counter += 1
+                a += 45
+                e += 45
+            a = boxcoords[0]
+            e = textcoords[0]
+            b += 45
+            f += 45
 
-    # -------- draws hard boxes and text ---------------
-    [a, b, c, d] = [550, 190, 45, 45]
-    [e, f] = [572.5, 212.5]
-    hardtext = ['hard'+str(x) for x in range(1, 91)]
-    counter = 0
-    hardboxcoords = []
-    hardtextcoords = []
-    for x in range(10):
-        for y in range(9):
-            newbutt = Button(hardtext[counter])
-            Button.add_startlist(newbutt)
-            hardboxcoords.append([a, b, c, d])
-            newbutt.coordinates = [a, b, c, d]
-            hardtextcoords.append([e, f])
-            counter += 1
-            a += 45
-            e += 45
-        a = 550
-        e = 572.5
-        b += 45
-        f += 45
-
-    counter = 0
-    for coord in hardboxcoords:
-        draw_startbuttons(text1=hardtext[counter][4:],  boxcolour=GRAY, textcolour=RED,
-                          textcoords=hardtextcoords[counter], boxcoords=coord)
-        counter += 1
+    # draws easy and hard puzzle boxes and text
+    incrementbuttons([45, 190, 45, 45], [67.5, 212.5], 50, GREEN, "easy")
+    incrementbuttons([550, 190, 45, 45], [572.5, 212.5], 90, RED, "hard")
 
     # -------- draw loadgame boxes and text ----------
 
@@ -697,24 +553,17 @@ def startscreenbuttons():
     draw_startbuttons(boxcolour=GRAY, boxcoords=[495, 191, 44, 44])
     # set search button image, if image missing use text
     try:
-        search_image = pygame.image.load('searchimage.png')
-        searchobj = search_image.get_rect()
-        searchobj.center = (517, 213)
-        gamescreen.blit(search_image, searchobj)
+        get_image("searchimage.png", (517, 213))
     except pygame.error as search_error:
         error_text = str(search_error)[14:]
         print("*Missing Search Image Button File: " + error_text + "*")
-        search_font = pygame.font.Font('freesansbold.ttf', 20)
-        surface_obj = search_font.render("Go.", True, GRAY)
-        search_rect = surface_obj.get_rect()
-        search_rect.center = (516, 213)
-        gamescreen.blit(surface_obj, search_rect)
+        get_text(20, "Go.", GRAY, (516, 213))
 
     # make load button
     newbutt = Button('loadsave')
     newbutt.add_startdict()
     newbutt.coordinates = [280, 610, 260, 29]
-    newbutt.text = 'LOAD'
+    newbutt.text = "LOAD"
     draw_startbuttons(textcolour=GRAY, text1=newbutt.text, textcoords=[400, 625],
                       boxcolour=GRAY, boxcoords=[280, 610, 260, 29])
     # load button area outline box
@@ -725,7 +574,7 @@ def startscreenbuttons():
     [e, f] = [290, 247.5]
 
     for x in range(1, 16):
-        newbutt = Button('load'+str(x))
+        newbutt = Button("load"+str(x))
         Button.add_startdict(newbutt)
         newbutt.coordinates = [a, b, c, d]
         newbutt.textcoords = [e, f]
@@ -743,7 +592,7 @@ def searchfiles(searchterm):
 
     # draw over previous loadfile buttons
     for x in range(1, 16):
-        loadbutton = Button.startbutdict['load'+str(x)]
+        loadbutton = Button.startbutdict["load"+str(x)]
         loadbutton.text = loadbutton.name  # reset text so buttons cannot be hovered unless more text is entered
         draw_startbuttons(boxfill=BLACK, boxcoords=loadbutton.coordinates)
 
@@ -756,10 +605,10 @@ def searchfiles(searchterm):
         else:  # if a non text file type is found skip this file
             continue
 
-        if searchterm == '!easy':
-            # display the first 15 (max) easy puzzle savefiles in the directory
+        if searchterm == '!easy' or '!hard':  # codes to search for puzzles of given difficulty
+            # display the first 15 (max) easy/hard puzzle savefiles in the directory
             try:
-                if 'easy' in puzzname:
+                if searchterm[1:] in puzzname:
                     textshown = child.name + '  ¦¦  ' + puzzname[:-1]
                     saves.append(textshown)
                 else:
@@ -767,20 +616,7 @@ def searchfiles(searchterm):
             except IndexError:
                 pass
 
-        elif searchterm == '!hard':
-            # display the first 15 (max) hard puzzle savefiles in the directory
-            try:
-                if 'hard' in puzzname:
-                    textshown = child.name + '  ¦¦  ' + puzzname[:-1]
-                    saves.append(textshown)
-                else:
-                    pass
-            except IndexError:
-                # stuff
-                pass
-
-        else:
-            # for any other term search for any file with that string in the name
+        else:  # for any other term search for any file with that string in the name
             try:
                 if searchterm in child.name:
                     textshown = child.name + '  ¦¦  ' + puzzname[:-1]
@@ -892,16 +728,10 @@ def gametimer(mins, secs, paused=False):
         s = '' + secs + 's '
     timestring = m + s
 
-    # fill
+    # draw the fill outline and text of the timer
     pygame.draw.rect(gamescreen, BLACK, [720, 45, 130, 40])
-    # outline
     pygame.draw.rect(gamescreen, BLUE, [720, 50, 130, 40], 1)
-    # text
-    Obj = pygame.font.Font('freesansbold.ttf', 24)
-    SurfaceObj = Obj.render(timestring, True, WHITE)
-    RectObj = SurfaceObj.get_rect()
-    RectObj.center = [785, 70]
-    gamescreen.blit(SurfaceObj, RectObj)
+    get_text(24, timestring, WHITE, (785, 70))
 
 
 # TODO: ------------------------------ CHECKLIST ----------------------------------
@@ -924,8 +754,12 @@ def pyinit():
     #print(pygame.display.get_driver())
 
     # set game icon as a small sudoku image
-    icon = pygame.image.load('sudoku_icon.bmp')
-    pygame.display.set_icon(icon)
+    try:
+        icon = pygame.image.load('sudoku_icon.bmp')
+        pygame.display.set_icon(icon)
+    except pygame.error as error_message:
+        print(error_message)
+
     pygame.display.set_caption('Lameo Sudoku')
 
 
@@ -965,7 +799,7 @@ def startscreen():
                         bh = button.coordinates[3]
                         if bx < event.pos[0] < (bx + bw) and by < event.pos[1] < (by + bh):
                             num = int(button.text[4:]) - 1  # button.name is 1 higher than its index in the statelist
-                            set_starting_state('easy', state_num=num)
+                            set_starting_state(0, state_num=num)
                             Position.puzzlenumber = 'easy' + str(num + 1)
                             # break while loop to continue to main loop after setting starting state of game
                             return False
@@ -979,7 +813,7 @@ def startscreen():
                         bh = button.coordinates[3]
                         if bx < event.pos[0] < (bx + bw) and by < event.pos[1] < (by + bh):
                             num = int(button.text[4:]) - 1  # button.name is 1 higher than its index in the statelist
-                            set_starting_state('hard', state_num=num)
+                            set_starting_state(1, state_num=num)
                             Position.puzzlenumber = 'hard'+str(num + 1)
                             return False  # break while loop to continue to main loop
 
@@ -1014,6 +848,7 @@ def startscreen():
                 # only have to deal with load game buttons as others direct straight to mainloop upon downclick
                 if Button.potential_click != 0:
                     b = Button.potential_click  # button object that has been downclicked
+                    # TODO: getting warnings as it thinks b is class int...
                     bx = b.coordinates[0]
                     by = b.coordinates[1]
                     bw = b.coordinates[2]
@@ -1135,11 +970,8 @@ def startscreen():
                     pass
 
         # draw different box colours if hovered for easy puzzle boxes -  only redraws on hover/unhover
-
-        # encompasses all easy puzzle buttons
-        startbuttonhover(startindex=None, endindex=50, hovercol=RED, islist=True)
-        # encompasses all hard state buttons
-        startbuttonhover(startindex=50, endindex=140, hovercol=GREEN, islist=True)
+        startbuttonhover(startindex=None, endindex=50, hovercol=RED, islist=True)  # easy puzzle buttons
+        startbuttonhover(startindex=50, endindex=140, hovercol=GREEN, islist=True)  # hard state buttons
         # search buttons
         for thing in ['searchbox', 'searchbutton', 'loadsave']:
             startbuttonhover(hovercol=WHITE, isdict=True, name=thing)
@@ -1265,11 +1097,7 @@ def mainloop(timer=0, load=False):
 
     # drawing text to display the puzzle number/difficulty
     # pygame.draw.rect(gamescreen, GRAY, [700, 620, 170, 30])
-    eh = pygame.font.Font('freesansbold.ttf', 19)
-    ah = eh.render('Puzzle: '+Position.puzzlenumber, True, BLUE)
-    Ob = ah.get_rect()
-    Ob.center = (785, 30)
-    gamescreen.blit(ah, Ob)
+    get_text(19, "Puzzle: "+Position.puzzlenumber, BLUE, (785, 30))
 
     # draw clock
     mins = str(timer//60)
