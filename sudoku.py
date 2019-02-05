@@ -404,13 +404,13 @@ def startscreenhover():
         # if button is hovered...ie mouse x is between button x->x+width and mouse y between button y->y+height
         if bx1 < mouse_pos[0] < (bx1 + bw1) and by1 < mouse_pos[1] < (by1 + bh1):
             if button1.was_hovered:  # button was previously hovered and is still hovered so dont update outline
-                print('button still hovered')
+                # print('button still hovered')
                 pass
             elif not button1.was_hovered:  # button wasnt hovered last frame so must update it
-                print('new button hover')
+                # print('new button hover')
                 prev_hov = Button.prev_hover
                 if prev_hov is not None:  # skipped over the 1pixel gap to new button - have to reset prev outline
-                    print('prev hovered button')
+                    # print('prev hovered button')
                     if prev_hov.name[:4] == "load":
                         pygame.draw.rect(gamescreen, BLACK, prev_hov.coordinates[:4], 1)
                     else:
@@ -459,7 +459,7 @@ def startscreenhover():
     if not current_hover:
         # if previous frame had a hovered button, reset its outline and tracker
         if Button.prev_hover is not None:
-            print('no current hover - but previous')
+            # print('no current hover - but previous')
             bx = Button.prev_hover.coordinates[0]
             by = Button.prev_hover.coordinates[1]
             bw = Button.prev_hover.coordinates[2]
