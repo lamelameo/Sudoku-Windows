@@ -387,93 +387,108 @@ def drawbutton(button, fill=BLACK, size=22):
 
 
 def startscreenhover():
-    # this function removes excess searching through buttons, breaks when a hovered button is found and only searches
-    # list/dict if the hover is in the appropriate area, so reduces the searched buttons compared to buttonhover()
-    # Processes the following:
+    # This function processes the following button hover related events:
     # || no buttons hovered -> button hovered || button hover -> still hovered ||
     # || button hover -> different button hovered || button hover -> button unhovered ||
+    # determines which button is hovered using its position in its regions grid (easy/hard/search results)
 
-    # TODO: can do a quicker search could try a bisection search...or others?
     mouse_pos = pygame.mouse.get_pos()
 
-    def hovered(button1, hover_outline):
-        bx1 = button1.coordinates[0]
-        by1 = button1.coordinates[1]
-        bw1 = button1.coordinates[2]
-        bh1 = button1.coordinates[3]
-        # if button is hovered...ie mouse x is between button x->x+width and mouse y between button y->y+height
-        if bx1 < mouse_pos[0] < (bx1 + bw1) and by1 < mouse_pos[1] < (by1 + bh1):
-            if button1.was_hovered:  # button was previously hovered and is still hovered so dont update outline
-                # print('button still hovered')
-                pass
-            elif not button1.was_hovered:  # button wasnt hovered last frame so must update it
-                # print('new button hover')
-                prev_hov = Button.prev_hover
-                if prev_hov is not None:  # skipped over the 1pixel gap to new button - have to reset prev outline
-                    # print('prev hovered button')
-                    if prev_hov.name[:4] == "load":
-                        pygame.draw.rect(gamescreen, BLACK, prev_hov.coordinates[:4], 1)
-                    else:
-                        pygame.draw.rect(gamescreen, GRAY, prev_hov.coordinates[:4], 1)
-                    Button.prev_hover.was_hovered = False
-                button1.was_hovered = True  # updates hovered for next frame
-                Button.prev_hover = button1
-                pygame.draw.rect(gamescreen, hover_outline, [bx1, by1, bw1, bh1], 1)  # redraw hover outline
-            return True
-        else:  # if we are in the 1 pixel gp between buttons...this will fall all the way through our checks
-            return False
+    def hoveroutline(hovered_button, hover_outline):
+        # processes confirmed hover events on buttons by updating the currently hovered buttons outline
+        # and updating previously hovered buttons outline (depending on which are necessary)
 
-    current_hover = False
-    # easy puzzle region - 50 buttons
-    if 45 < mouse_pos[0] < 270 and 190 < mouse_pos[1] < 640:
-        for easybutton in Button.startbuttons[:50]:
-            if hovered(easybutton, hover_outline=RED):
-                current_hover = True
-                break
-    # hard puzzle region - 90 buttons
-    elif 550 < mouse_pos[0] < 955 and 190 < mouse_pos[1] < 640:
-        for hardbutton in Button.startbuttons[50:140]:
-            if hovered(hardbutton, hover_outline=GREEN):
-                current_hover = True
-                break
-    # search/load region - 18 buttons
-    elif 280 < mouse_pos[0] < 540 and 190 < mouse_pos[1] < 650:
-        for button_name in ['searchbox', 'searchbutton', 'fileload']:  # search buttons
-            searchbutton = Button.startbutdict[button_name]
-            if hovered(searchbutton, hover_outline=WHITE):
-                current_hover = True
-                break
-        # search result buttons
-        for button_key in Button.startbutdict:  # 2 search buttons and 15 potential savefiles
-            # only draw if a file has been linked to the button - excludes the searchbox and search/load buttons
-            if '.txt' in Button.startbutdict[button_key].text:
-                searchbutton = Button.startbutdict[button_key]
-                if hovered(searchbutton, hover_outline=BLUE):
-                    current_hover = True
-                    break
-            else:
-                pass
+        if hovered_button.was_hovered:  # button was previously hovered so dont update outline
+            # print('button still hovered')
+            pass
+        elif not hovered_button.was_hovered:  # button wasnt hovered last frame so must update outline
+            # print('new button hover')
+            # skipped over the edge to new button - have to reset prev outline
+            clearhovered()
+            # update hover trackers for current button for next frame
+            hovered_button.was_hovered = True
+            Button.prev_hover = hovered_button
+            # redraw the outline to hover colour
+            pygame.draw.rect(gamescreen, hover_outline, hovered_button.coordinates[:4], 1)
 
-    # if no button is hovered this frame, current hover = False - includes the 1 pixel gap between buttons which will
-    # be processed by the above else if statements as no hover
-    if not current_hover:
-        # if previous frame had a hovered button, reset its outline and tracker
+    def clearhovered():
+        # if no button is hovered, then have to check for a previous frame hover and update the buttons outline
         if Button.prev_hover is not None:
             # print('no current hover - but previous')
-            bx = Button.prev_hover.coordinates[0]
-            by = Button.prev_hover.coordinates[1]
-            bw = Button.prev_hover.coordinates[2]
-            bh = Button.prev_hover.coordinates[3]
-            if Button.prev_hover.name[:4] == "load":
-                pygame.draw.rect(gamescreen, BLACK, [bx, by, bw, bh], 1)  # redraw load outlines black
-            else:
-                pygame.draw.rect(gamescreen, GRAY, [bx, by, bw, bh], 1)  # redraw default outlines gray
+            if Button.prev_hover.name[:4] == "load":  # redraw load outlines black
+                pygame.draw.rect(gamescreen, BLACK, Button.prev_hover.coordinates[:4], 1)
+            else:  # redraw default outlines gray
+                pygame.draw.rect(gamescreen, GRAY, Button.prev_hover.coordinates[:4], 1)
             Button.prev_hover.was_hovered = False
-            Button.prev_hover = None  # clear prev hover
+
+    def gridhovered(region, hover_outline, xlower, xupper, ylower, yupper):
+        # if button is within a given region which contains buttons - calculate which button (if any) the mouse is on
+        if xlower < mouse_pos[0] < xupper and ylower < mouse_pos[1] < yupper:
+            # gives the row and column index of the button in the easy grid
+            button_col = (mouse_pos[0] - xlower) // 45
+            button_row = (mouse_pos[1] - ylower) // 45
+            # if the remainder of the division of position by grid size is 0, then the mouse is on an edge
+            b_col_remainder = (mouse_pos[0] - xlower) % 45
+            b_row_remainder = (mouse_pos[1] - ylower) % 45
+            # calculate the index of the button in the grid of buttons
+            button_index = 0
+            # print("button index: " + str(button_index))
+            if region == "easy":  # easy button index = 0-49
+                button_index = button_col + button_row * 5
+            elif region == "hard":  # hard button index = 50-139
+                button_index = 50 + button_col + button_row * 9
+
+            # the mouse is hovering an edge of buttons - process as non hover
+            if b_col_remainder == 0 | b_row_remainder == 0:
+                # mouse is on an edge must return false, as this is equivalent to a non hover
+                return False
+            else:  # the mouse is hovering a button
+                hovered_button = Button.startbuttons[button_index]
+                hoveroutline(hovered_button, hover_outline)
+                return True  # return true for a hover in this region so no further processing occurs
+
+        else:  # if not in the given region return false for a non hover
+            # print("not in "+region+" region")
+            return False
+
+    def searchhovered(xlower, xupper, ylower, yupper):
+        if xlower < mouse_pos[0] < xupper and ylower < mouse_pos[1] < yupper:
+            # search box/button and load button have white hover outline
+            hover_outline = WHITE
+            if 281 < mouse_pos[0] < 495 and 191 < mouse_pos[1] < 235:
+                button_key = "searchbox"
+            elif 495 < mouse_pos[0] < 539 and 191 < mouse_pos[1] < 235:
+                button_key = "searchbutton"
+            elif 235 < mouse_pos[1] < 610:
+                # determines which load button and converts to the corresponding key
+                button_key = "load" + str((mouse_pos[1] - 235) // 25 + 1)
+                hover_outline = BLUE  # search results have blue outline
+                # only allow for hover on search result button areas if a result is displayed
+                if '.txt' not in Button.startbutdict[button_key].text:
+                    return False
+            elif 610 < mouse_pos[1] < 639:
+                button_key = "fileload"
+            else:  # edges
+                return False
+
+            hovered_button = Button.startbutdict[button_key]
+            hoveroutline(hovered_button, hover_outline)
+            return True  # return true for a hover in this region so no further processing occurs
+
+        else:  # if not in the given region return false for a non hover
+            return False
+
+    # checking each region for hover in that area - functions process hovers
+    # if each function returns False, this is a non hover, so redraw previously hovered button (if any)
+    if (not gridhovered("easy", RED, 45, 270, 190, 640)) & \
+            (not gridhovered("hard", GREEN, 550, 955, 190, 640)) & \
+            (not searchhovered(280, 540, 190, 650)):
+        clearhovered()
 
 
 def buttonhover(button, default_outline=BLUE, hover_outline=WHITE):
     # redraws a buttons outline if hovered, can give outline colours for hovered/unhovered states
+    # just checks every button till it finds the one corresponding to the hover
 
     # only redraw if change of state
     mouse_pos = pygame.mouse.get_pos()
@@ -636,8 +651,8 @@ def startscreenbuttons():
     newbutt.add_startdict()
     newbutt.coordinates = [495, 191, 44, 44]
     draw_startbuttons(boxcolour=GRAY, boxcoords=[495, 191, 44, 44])
-    # set search button image, if image missing use text
-    try:
+
+    try:  # set search button image, if image missing use text
         get_image("searchimage.png", (517, 213))
     except pygame.error as search_error:
         error_text = str(search_error)[14:]
@@ -1010,6 +1025,9 @@ def startscreen():
                         print('Invalid character...')
                 else:
                     pass
+
+        # draw different box colours if hovered for easy puzzle boxes - only redraws on hover/unhover
+        startscreenhover()
 
         clock.tick(30)  # set maximum fps to 30
         # updates the full screen every frame..docs say better to use on a full list than keep calling the function
