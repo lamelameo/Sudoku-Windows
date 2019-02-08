@@ -1236,7 +1236,7 @@ def mainloop(timer=0, load=False):
                     # Checks if a left mouse button upclick occurs. Only take any action if a potential click
                     # has been registered (as above) from a downclick in a position/button object
 
-                    if Position.potential_click != 0:
+                    if isinstance(Position.potential_click, Position):
                         p = Position.potential_click  # the position object which has been clicked (as set above)
                         x1 = p.coordinates[0]
                         y1 = p.coordinates[1]
