@@ -7,46 +7,53 @@ from pygame.locals import *
 import pathlib
 
 
-def start_states():
-    # there are 50 sets of starting states in the easy puzzle file, each 81 numbers of a grid is split into 10 lines
-    # lines are split using \n so doesnt appear in .txt file when viewed in notepad
-    # the first line is an identifier and then there are 9 lines of numbers corresponding to each row of the grid
-    # concatenate all the lines into one string and strip the first 7 letters corresponding to the identifier line
-    # result is 81 characters long, each character is a grid cells starting value - either 0 (empty) or an integer 1-9
+def set_start_states(difficulty, puzzlenum):
+    # given the difficulty type and puzzlenumber, set the starting state values for each Position object
 
-    file = open('sudokuezpuzzles.txt', 'r')
-    sudoku = []
-    for line in file:
-        thing = line.strip()
-        sudoku.append(thing)
-    #print(sudoku)
-    file.close()
+    starting_state = ""
 
-    easystates = []
-    for x in range(50):
-        newstring = ''
-        for z in range(10):
-            counter = (x*10) + z
-            newstring += sudoku[counter]
-        easystates.append(newstring[7:])
-    #print(easystates)
+    if difficulty == 0:  # process easy puzzle selection
+        # open the file and strip newline characters/whitespace for each line then append to a list
+        file = open('sudokuezpuzzles.txt', 'r')
+        sudoku = []
+        for line in file:
+            thing = line.strip()
+            sudoku.append(thing)
+        file.close()
 
-    file2 = open('hardsudokupuzzles.txt', 'r')
-    sudoku2 = []
-    for line in file2:
-        thing = line.strip()
-        sudoku2.append(thing)
-    #print(sudoku2)
-    file2.close()
+        # there are 50 easy puzzle start states, each 81 numbers of a grid is split into 10 lines
+        # lines are split using \n so doesnt appear in .txt file when viewed in notepad
+        # the first line is an identifier and then there are 9 lines of numbers corresponding to each row of the grid
+        # concatenate all the grid rows into one 81 character string, with value of either 0 (empty) or an integer 1-9
 
-    # hardpuzzles are in the format: 1 line for each set of 81 grid numbers, with '.' being an empty cell or an int 1-9
-    hardstates = []
-    for state in sudoku2:
-        thing = state.replace('.', '0', 81)
-        hardstates.append(thing)
-    #print(hardstates)
+        for puzzle_line in range(1, 10):  # loop through 9 lines, start at a value of 1 to skip the identifier line
+            starting_state += sudoku[(puzzlenum - 1) * 10 + puzzle_line]  # puzzle index is 1 less than num
 
-    return easystates, hardstates
+    elif difficulty == 1:  # process hard puzzle selection
+        # open the file and strip newline characters/whitespace for each line then append to a list
+        file2 = open('hardsudokupuzzles.txt', 'r')
+        sudoku = []
+        for line in file2:
+            stripped_line = line.strip()
+            sudoku.append(stripped_line)
+        file2.close()
+
+        # the 95 hardpuzzles have the format: 1 line for each set of 81 grid numbers, each value is either an int 1-9
+        # or '.' for an empty cell - replace values of '.' with '0' to be consistent with the easy puzzle format
+
+        for value in range(81):
+            position_value = sudoku[(puzzlenum - 1)][value]
+            if position_value == '.':
+                starting_state += '0'
+            else:
+                starting_state += position_value
+
+    # set the starting state values for each grid cell using the Position class
+    count = 0
+    for pos in Position.positionlist:
+        pos.start_state = starting_state[count]  # sets as '0' for changeable or 'int' for not
+        pos.value = 'set' + starting_state[count]  # sets the position value to an integer
+        count += 1
 
 
 def num_pos_pic():
@@ -87,7 +94,7 @@ CREAM = (249, 239, 217)
 # ---------------------- MAKING POSITION CLASS AND OBJECTS -------------------------
 
 class Position:
-    positiondict = {}  # dictionary populated with all the created position objects -  used to access them
+    positionlist = []  # list populated with all the created position objects -  used to access them
     potential_click = 0
     puzzlenumber = None
     errorPicShown = False
@@ -101,7 +108,7 @@ class Position:
         self.pencil_values = []  # 1 or 0 for each integer
         self.coordinates = []  # (x, y, w, h, xcentre, ycentre)
         self.pencil_coordinates = []  # (xcentre, ycentre) for each integers position in pencil mode
-        Position.positiondict[name] = self  # add created object to dictionary
+        Position.positionlist.append(self)  # add created object to list
 
     def clear_position(self):
         # clear position state back to value of 0
@@ -109,59 +116,29 @@ class Position:
 
 
 def positionobjects():
-    # make position objects named '0' - '81' from left to right, top to bottom in 9x9 grid
+    # make position objects named '1' - '81' from left to right, top to bottom in 9x9 grid
     position_names = [str(x) for x in range(1, 82)]
     for name in position_names:
         Position(name)
 
     # set position coordinates
     (a, b, c, d, e, f) = (30, 30, 70, 70, 65, 65)  # (x, y, w, h, xcentre, ycentre)
-
-    # creating sets for coordinates for positions in each row
-    # positions_coordinates = []
-    for x1 in range(9):
-        for y1 in range(9):
-            index = str(x1*9 + y1+1)  # the position in the grid in string form, 1-81
-            # adding coordinates to the corresponding position class objects
-            Position.positiondict[index].coordinates = (a, b, c, d, e, f)
-            # add width to x and xcentre with each new position in row
-            a += 70
-            e += 70
-        # add height to y and ycentre with each new row started
-        b += 70
-        f += 70
-        # x and xcentre should be reset to starting point for start of next row
-        a = 30
-        e = 65
-
     # set pencil coordinates for position objects
-    # each position has a set of 9 sets containing (x, y) coordinates
+    # each position has 9 sets containing (x, y) coordinates
     pencil_coordinates = ((44, 44.5), (67, 44.5), (86, 44.5),
                           (44, 67), (67, 67), (86, 67),
                           (44, 89.5), (67, 89.5), (86, 89.5))
 
-    # Increment the pencil values for each position - iterating through 9 values x 9 rows
-    # pencil_coordinates = []
-    for num1 in range(9):
-        for num2 in range(9):
-            index = str(num1*9 + num2+1)  # the position in the grid as a string, 1-81
-            listt = []
-            # iterate through all coordinates and increase the values in x or y depending on it position in the grid
-            for item in pencil_coordinates:
-                item = (item[0] + (num2 * 70), item[1] + (num1 * 70))
-                listt.append(item)
-            # add coordinates to the corresponding position class attributes
-            Position.positiondict[index].pencil_coordinates = listt
-
-
-def set_starting_state(difficulty, state_num=0):
-    # set the positions starting values from the saved lists given a difficulty (easy=0, hard=1) and puzzle number
-    state = start_states()[difficulty][state_num]  # string with number for each position..81 chars long..0 for empty
-    count = 0
-    for pos in Position.positiondict:
-        Position.positiondict[pos].start_state = state[count]  # sets as either '0' for changeable or 'int' for not
-        Position.positiondict[pos].value = 'set'+state[count]  # sets the position value to an integer
-        count += 1
+    # adding coordinates for positions and their pencil values by iterating through each cell in each row left-right
+    for x1 in range(9):
+        for y1 in range(9):
+            index = x1*9 + y1  # the positions index in the Position list (0-80)
+            # adding coordinates to the corresponding position class objects with values based on position in grid
+            Position.positionlist[index].coordinates = (a + y1*70, b + x1*70, c, d, e + y1*70, f + x1*70)
+            # iterate through pencil coordinates and increase the values of x or y depending on it position in the grid
+            for xy_set in pencil_coordinates:
+                new_coords = (xy_set[0] + (y1 * 70), xy_set[1] + (x1 * 70))
+                Position.positionlist[index].pencil_coordinates.append(new_coords)
 
 
 def rules():
@@ -173,15 +150,14 @@ def rules():
     columns = []  # list for each column, each element is a position in that column
     blocks = []  # list for each block, each element is a position in that block
 
-    keynames = [str(key) for key in range(1, 82)]
-
     # making rows
     counter = 0
     for num1 in range(9):
         newrow = []
         rows.append(newrow)
         for num2 in range(9):
-            rows[num1].append(Position.positiondict[keynames[counter]].value)
+            position_index = num1 * 9 + num2
+            rows[num1].append(Position.positionlist[position_index].value)
             counter += 1
 
     # making columns
@@ -251,11 +227,10 @@ def rules():
 def clear_states():
     # clear values for all positions if they are not starting values, leave pencil values unchanged
     # TODO: add option for removing pencil states
-    for pos in Position.positiondict:
-        if Position.positiondict[pos].start_state == '0':
-            Position.positiondict[pos].value = 'set0'  # reset value
-            # Position.positiondict[pos].pencil_values = []  # reset pencil states
-            positiontext(Position.positiondict[pos])  # redraw graphics so it is empty
+    for pos in Position.positionlist:
+        if pos.start_state == '0':
+            pos.value = 'set0'  # reset value
+            positiontext(pos)  # redraw graphics so it is empty
         else:
             pass
 
@@ -470,7 +445,6 @@ def startscreenhover():
                 button_key = "fileload"
             else:  # edges
                 return False
-
             hovered_button = Button.startbutdict[button_key]
             hoveroutline(hovered_button, hover_outline)
             return True  # return true for a hover in this region so no further processing occurs
@@ -489,6 +463,7 @@ def startscreenhover():
 def buttonhover(button, default_outline=BLUE, hover_outline=WHITE):
     # redraws a buttons outline if hovered, can give outline colours for hovered/unhovered states
     # just checks every button till it finds the one corresponding to the hover
+    #TODO: could make faster..like start screen hover, but should be fine this way as not many buttons
 
     # only redraw if change of state
     mouse_pos = pygame.mouse.get_pos()
@@ -514,7 +489,6 @@ def buttonhover(button, default_outline=BLUE, hover_outline=WHITE):
 
 def positiontext(position, default_colour=BLUE):
     # draw values/pencil for positions
-
     xcentre = position.coordinates[4]
     ycentre = position.coordinates[5]
     buttonnames = ['set1', 'set2', 'set3', 'set4', 'set5', 'set6', 'set7',
@@ -539,7 +513,6 @@ def positiontext(position, default_colour=BLUE):
 
         else:  # position value is unchanged from last frame or changed between 'set0' and 'setempty' - take no action
             pass
-
     else:
         pass
 
@@ -816,7 +789,7 @@ def pyinit():
         pygame.display.set_icon(icon)
     except pygame.error as error_message:
         print(error_message)
-
+    # set name in window tab
     pygame.display.set_caption('Lameo Sudoku')
 
 
@@ -834,6 +807,7 @@ clock = pygame.time.Clock()
 
 def startscreen():
 
+    # draws all the components of the start screen
     startscreenbuttons()
     draw_startbuttons(text1='LAMEO SUDOKU', textcolour=BLUE, textcoords=[500, 80], size=70)
     draw_startbuttons(text1='easy', textcolour=GREEN, textcoords=[157, 170], size=28)
@@ -855,9 +829,9 @@ def startscreen():
                         bw = button.coordinates[2]
                         bh = button.coordinates[3]
                         if bx < event.pos[0] < (bx + bw) and by < event.pos[1] < (by + bh):
-                            num = int(button.text[4:]) - 1  # button.name is 1 higher than its index in the statelist
-                            set_starting_state(0, state_num=num)
-                            Position.puzzlenumber = 'easy' + str(num + 1)
+                            num = int(button.text[4:])
+                            set_start_states(0, num)
+                            Position.puzzlenumber = 'easy' + str(num)
                             # break while loop to continue to main loop after setting starting state of game
                             return False
 
@@ -869,9 +843,9 @@ def startscreen():
                         bw = button.coordinates[2]
                         bh = button.coordinates[3]
                         if bx < event.pos[0] < (bx + bw) and by < event.pos[1] < (by + bh):
-                            num = int(button.text[4:]) - 1  # button.name is 1 higher than its index in the statelist
-                            set_starting_state(1, state_num=num)
-                            Position.puzzlenumber = 'hard'+str(num + 1)
+                            num = int(button.text[4:])
+                            set_start_states(1, num)
+                            Position.puzzlenumber = 'hard'+str(num)
                             return False  # break while loop to continue to main loop
 
                 elif 281 < event.pos[0] < 539 and 191 < event.pos[1] < 656:
@@ -903,9 +877,8 @@ def startscreen():
 
             elif event.type == MOUSEBUTTONUP and event.button == 1:
                 # only have to deal with load game buttons as others direct straight to mainloop upon downclick
-                if Button.potential_click != 0:
+                if isinstance(Button.potential_click, Button):
                     b = Button.potential_click  # button object that has been downclicked
-                    # TODO: getting warnings as it thinks b is class int...
                     bx = b.coordinates[0]
                     by = b.coordinates[1]
                     bw = b.coordinates[2]
@@ -1048,25 +1021,22 @@ def savegame(name, time):
     gametime = str(time)
     save.write(gametime+'\n')
 
-    for pos in Position.positiondict:
-        p = Position.positiondict[pos]
-        save.write(p.start_state)
-    save.write('\n')
-
-    for pos in Position.positiondict:
-        p = Position.positiondict[pos]
-        if p.value == 'setempty':
-            save.write('set0')  # makes loading the game easier as each position has a value 4 characters long
+    start_values, set_values, pencil_values = "", "", ""
+    for pos in Position.positionlist:
+        # create string containing all starting values
+        start_values += pos.start_state
+        # create string containing all set values
+        if pos.value == "setempty":
+            set_values += "set0"  # set emtpy cells values to "set0" for ease (all values 4 chars long)
         else:
-            save.write(p.value)
-    save.write('\n')
+            set_values += pos.value
+        # create string containing all pencil values for each cell
+        pencil_values += "-"  # separate each cells set of pencil values by "-" so we can easily distinguish them
+        for value in pos.pencil_values:
+            pencil_values += value[-1]
 
-    for pos in Position.positiondict:
-        p = Position.positiondict[pos]
-        save.write('-')
-        for value in p.pencil_values:
-            save.write(value[-1])  # only writes the last character in 'setX' which is the integer
-    save.write('\n')
+    # write each string as a separate line in the save textfile for ease of loading
+    save.write(start_values+'\n'+set_values+'\n'+pencil_values)
     save.close()
 
 
@@ -1103,11 +1073,11 @@ def loadgame(savefile):
 
     # Initialising the saved data into a new pygame instance from the chosen savefile
     Position.puzzlenumber = puzzlename[:-1]  # puzzle difficulty/number - last character is '\n' so leave this out
-    for count, posi in enumerate(Position.positiondict):
-        Position.positiondict[posi].start_state = start_values[count]  # sets start values
+    for count, posi in enumerate(Position.positionlist):
+        posi.start_state = start_values[count]  # sets start values
         # step by 4 characters each position value as it is in the form 'set0'
-        Position.positiondict[posi].value = pos_values[count*4:(count*4) + 4]  # sets position values
-        Position.positiondict[posi].pencil_values = pencil_list[count]  # sets pencil values
+        posi.value = pos_values[count*4:(count*4) + 4]  # sets position values
+        posi.pencil_values = pencil_list[count]  # sets pencil values
     print('loaded file...', filename)
     mainloop(gametime, load=True)  # starts the gameloop using the saved time
 
@@ -1116,18 +1086,18 @@ def resetboard():
     # remove error pic
     drawboard(BLACK, BLUE)
     # redraw position values
-    for pos2 in Position.positiondict:
-        if Position.positiondict[pos2].start_state != '0':
-            positiontext(Position.positiondict[pos2], WHITE)
-        elif Position.positiondict[pos2].start_state == '0':
-            if Position.positiondict[pos2].value == 'set0':
-                if Position.positiondict[pos2].pencil_values is []:  # no pencil values
+    for pos in Position.positionlist:
+        if pos.start_state != '0':
+            positiontext(pos, WHITE)
+        elif pos.start_state == '0':
+            if pos.value == 'set0':
+                if pos.pencil_values is []:  # no pencil values
                     pass
                 else:
-                    for val2 in Position.positiondict[pos2].pencil_values:
-                        penciltext(Position.positiondict[pos2], mode='load', value=val2)
+                    for val2 in pos.pencil_values:
+                        penciltext(pos, mode='load', value=val2)
             else:
-                positiontext(Position.positiondict[pos2], BLUE)
+                positiontext(pos, BLUE)
 
 
 def mainloop(timer=0, load=False):
@@ -1167,24 +1137,24 @@ def mainloop(timer=0, load=False):
     # drawing starting state and/or loaded values which are set/loaded into the class attributes from startscreen
     if load is False:
         # drawing starting state position text - these positions are never redrawn
-        for pos in Position.positiondict:
-            positiontext(Position.positiondict[pos], WHITE)
+        for pos in Position.positionlist:
+            positiontext(pos, WHITE)
     elif load is True:
-        for pos in Position.positiondict:
+        for pos in Position.positionlist:
             # starting values drawn
-            if Position.positiondict[pos].start_state != '0':
-                positiontext(Position.positiondict[pos], WHITE)
+            if pos.start_state != '0':
+                positiontext(pos, WHITE)
             # loaded changeable values and pencil values drawn
-            elif Position.positiondict[pos].start_state == '0':
+            elif pos.start_state == '0':
                 # if no position value, check for pencil values to be drawn
-                if Position.positiondict[pos].value == 'set0':
-                    if Position.positiondict[pos].pencil_values is []:  # no pencil values
+                if pos.value == 'set0':
+                    if pos.pencil_values is []:  # no pencil values
                         pass
                     else:  # has pencil values
-                        for val in Position.positiondict[pos].pencil_values:
-                            penciltext(Position.positiondict[pos], mode='load', value=val)
+                        for val in pos.pencil_values:
+                            penciltext(pos, mode='load', value=val)
                 else:  # position has value to be drawn
-                    positiontext(Position.positiondict[pos], BLUE)
+                    positiontext(pos, BLUE)
             else:
                 pass
 
@@ -1243,20 +1213,19 @@ def mainloop(timer=0, load=False):
 
                     if Button.activestate is not None and skip == 0:  # only check positions if a button is active
                         # if so - check if the cursor is inside a position:
-                        for posi in Position.positiondict:  # check each position in the dictionary
-                            p = Position.positiondict[posi]
-                            x1 = p.coordinates[0]
-                            y1 = p.coordinates[1]
-                            w1 = p.coordinates[2]
-                            h1 = p.coordinates[3]
+                        for posi in Position.positionlist:  # check each position in the dictionary
+                            x1 = posi.coordinates[0]
+                            y1 = posi.coordinates[1]
+                            w1 = posi.coordinates[2]
+                            h1 = posi.coordinates[3]
                             if x1 < event.pos[0] < x1 + w1 and y1 < event.pos[1] < y1 + h1:
-                                if p.start_state != '0':
+                                if posi.start_state != '0':
                                     # if the position clicked is a starting state integer - take no action
                                     # this means that they cannot be changed/interacted with
                                     break
                                 else:
-                                    Position.potential_click = p  # set to remove unnecessary checks through
-                                    # positiondict on every mouse upclick - just check if this value != None
+                                    Position.potential_click = posi  # set to remove unnecessary checks through
+                                    # positionlist on every mouse upclick - just check if this value != None
                                     break  # stop searching positions as only one is active each frame
                             else:
                                 pass
