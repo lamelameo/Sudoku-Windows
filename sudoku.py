@@ -110,19 +110,14 @@ class Position:
         self.pencil_coordinates = []  # (xcentre, ycentre) for each integers position in pencil mode
         Position.positionlist.append(self)  # add created object to list
 
-    def clear_position(self):
-        # clear position state back to value of 0
-        self.value = 0
-
 
 def positionobjects():
     # make position objects named '1' - '81' from left to right, top to bottom in 9x9 grid
-    position_names = [str(x) for x in range(1, 82)]
-    for name in position_names:
-        Position(name)
+    for x in range(1, 82):
+        Position(str(x))
 
     # set position coordinates
-    (a, b, c, d, e, f) = (30, 30, 70, 70, 65, 65)  # (x, y, w, h, xcentre, ycentre)
+    (a, b, c, d, e, f) = (30, 30, 70, 70, 65, 65)  # (x, y, width, height, xcentre, ycentre)
     # set pencil coordinates for position objects
     # each position has 9 sets containing (x, y) coordinates
     pencil_coordinates = ((44, 44.5), (67, 44.5), (86, 44.5),
@@ -271,8 +266,6 @@ class Button:
         else:
             self.state = 0
 
-    # make subclasses with integer and other buttons for diff functionality when clicked
-
 
 def buttonobjects():
 
@@ -361,6 +354,23 @@ def drawbutton(button, fill=BLACK, size=22):
         get_text(size, button.text, BLUE, button_centre)  # draw text in light gray
 
 
+def index_in_grid(event_pos, xlower, xupper, ylower, yupper, num_cols):
+    # determine what index in a grid an event occurred in, given the grid region's x and y bounds and the event position
+    # return that index if the event occured in the grid, else return nothing
+    if xlower < event_pos[0] < xupper and ylower < event_pos[1] < yupper:
+        # gives the row and column index of the button in the easy grid
+        grid_col = (event_pos[0] - xlower) // 45
+        grid_row = (event_pos[1] - ylower) // 45
+        # if the remainder of the division of position by grid size is 0, then the mouse is on an edge
+        col_remainder = (event_pos[0] - xlower) % 45
+        row_remainder = (event_pos[1] - ylower) % 45
+        # calculate the index of the button in the grid of buttons, assuming a left-right, top-bottom indexing
+        grid_index = grid_col + grid_row * num_cols
+        # the mouse is hovering a button, not on a row or column edge
+        if col_remainder != 0 and row_remainder != 0:
+            return grid_index  # return the index
+
+
 def startscreenhover():
     # This function processes the following button hover related events:
     # || no buttons hovered -> button hovered || button hover -> still hovered ||
@@ -372,12 +382,7 @@ def startscreenhover():
     def hoveroutline(hovered_button, hover_outline):
         # processes confirmed hover events on buttons by updating the currently hovered buttons outline
         # and updating previously hovered buttons outline (depending on which are necessary)
-
-        if hovered_button.was_hovered:  # button was previously hovered so dont update outline
-            # print('button still hovered')
-            pass
-        elif not hovered_button.was_hovered:  # button wasnt hovered last frame so must update outline
-            # print('new button hover')
+        if not hovered_button.was_hovered:  # button wasnt hovered last frame so must update outline
             # skipped over the edge to new button - have to reset prev outline
             clearhovered()
             # update hover trackers for current button for next frame
@@ -396,74 +401,48 @@ def startscreenhover():
                 pygame.draw.rect(gamescreen, GRAY, Button.prev_hover.coordinates[:4], 1)
             Button.prev_hover.was_hovered = False
 
-    def gridhovered(region, hover_outline, xlower, xupper, ylower, yupper):
-        # if button is within a given region which contains buttons - calculate which button (if any) the mouse is on
-        if xlower < mouse_pos[0] < xupper and ylower < mouse_pos[1] < yupper:
-            # gives the row and column index of the button in the easy grid
-            button_col = (mouse_pos[0] - xlower) // 45
-            button_row = (mouse_pos[1] - ylower) // 45
-            # if the remainder of the division of position by grid size is 0, then the mouse is on an edge
-            b_col_remainder = (mouse_pos[0] - xlower) % 45
-            b_row_remainder = (mouse_pos[1] - ylower) % 45
-            # calculate the index of the button in the grid of buttons
-            button_index = 0
-            # print("button index: " + str(button_index))
-            if region == "easy":  # easy button index = 0-49
-                button_index = button_col + button_row * 5
-            elif region == "hard":  # hard button index = 50-139
-                button_index = 50 + button_col + button_row * 9
-
-            # the mouse is hovering an edge of buttons - process as non hover
-            if b_col_remainder == 0 | b_row_remainder == 0:
-                # mouse is on an edge must return false, as this is equivalent to a non hover
-                return False
-            else:  # the mouse is hovering a button
-                hovered_button = Button.startbuttons[button_index]
-                hoveroutline(hovered_button, hover_outline)
-                return True  # return true for a hover in this region so no further processing occurs
-
-        else:  # if not in the given region return false for a non hover
-            # print("not in "+region+" region")
-            return False
-
     def searchhovered(xlower, xupper, ylower, yupper):
+        # determine if the mouse is hovering a button in the search area, is so return True, else return False
         if xlower < mouse_pos[0] < xupper and ylower < mouse_pos[1] < yupper:
             # search box/button and load button have white hover outline
             hover_outline = WHITE
-            if 281 < mouse_pos[0] < 495 and 191 < mouse_pos[1] < 235:
+            if 281 < mouse_pos[0] < 495 and 191 < mouse_pos[1] < 235:  # search box
                 button_key = "searchbox"
-            elif 495 < mouse_pos[0] < 539 and 191 < mouse_pos[1] < 235:
+            elif 495 < mouse_pos[0] < 539 and 191 < mouse_pos[1] < 235:  # search button
                 button_key = "searchbutton"
-            elif 235 < mouse_pos[1] < 610:
+            elif 235 < mouse_pos[1] < 610:  # load buttons
                 # determines which load button and converts to the corresponding key
                 button_key = "load" + str((mouse_pos[1] - 235) // 25 + 1)
                 hover_outline = BLUE  # search results have blue outline
                 # only allow for hover on search result button areas if a result is displayed
                 if '.txt' not in Button.startbutdict[button_key].text:
                     return False
-            elif 610 < mouse_pos[1] < 639:
+            elif 610 < mouse_pos[1] < 639:  # load button
                 button_key = "fileload"
             else:  # edges
                 return False
-            hovered_button = Button.startbutdict[button_key]
-            hoveroutline(hovered_button, hover_outline)
-            return True  # return true for a hover in this region so no further processing occurs
+            # all confirmed hovers fall through and are processed here given the set key and outline
+            hoveroutline(Button.startbutdict[button_key], hover_outline)
+            return True
+        return False  # hover not in the region will fall all the way through to here without returning a value
 
-        else:  # if not in the given region return false for a non hover
-            return False
-
-    # checking each region for hover in that area - functions process hovers
-    # if each function returns False, this is a non hover, so redraw previously hovered button (if any)
-    if (not gridhovered("easy", RED, 45, 270, 190, 640)) & \
-            (not gridhovered("hard", GREEN, 550, 955, 190, 640)) & \
-            (not searchhovered(280, 540, 190, 650)):
+    # determine if a hover was in the easy or hard grid, if it was the variable will be the index in the grid else None
+    easy_index = index_in_grid(mouse_pos, 45, 270, 190, 640, 5)
+    hard_index = index_in_grid(mouse_pos, 550, 955, 190, 640, 9)
+    # check if a hover occurred in any region and process it, else clear hover from previous frame
+    if easy_index is not None:
+        hoveroutline(Button.startbuttons[easy_index], RED)
+    elif hard_index is not None:
+        hoveroutline(Button.startbuttons[50 + hard_index], GREEN)
+    elif searchhovered(280, 540, 190, 650):
+        pass  # function processes a hover
+    else:
         clearhovered()
 
 
 def buttonhover(button, default_outline=BLUE, hover_outline=WHITE):
     # redraws a buttons outline if hovered, can give outline colours for hovered/unhovered states
     # just checks every button till it finds the one corresponding to the hover
-    #TODO: could make faster..like start screen hover, but should be fine this way as not many buttons
 
     # only redraw if change of state
     mouse_pos = pygame.mouse.get_pos()
@@ -474,17 +453,13 @@ def buttonhover(button, default_outline=BLUE, hover_outline=WHITE):
 
     # if button is hovered...ie mouse x is between button x->x+width and mouse y between button y->y+height
     if bx < mouse_pos[0] < (bx + bw) and by < mouse_pos[1] < (by + bh):
-        if button.was_hovered:
-            pass  # button was previously hovered and is still hovered so dont update outline
-        elif not button.was_hovered:
+        if not button.was_hovered:  # button was not previously hovered so update outline
             button.was_hovered = True  # updates hovered for next frame
             pygame.draw.rect(gamescreen, hover_outline, [bx, by, bw, bh], 1)  # redraw hover outline
-    else:  # if button not hovered...
+    else:  # if button not hovered but was last frame, then update outline
         if button.was_hovered:
             button.was_hovered = False  # reset prev state for next frame
             pygame.draw.rect(gamescreen, default_outline, [bx, by, bw, bh], 1)  # redraw default outline
-        else:  # button was unhovered and remains that way so take no action
-            pass
 
 
 def positiontext(position, default_colour=BLUE):
@@ -494,27 +469,21 @@ def positiontext(position, default_colour=BLUE):
     buttonnames = ['set1', 'set2', 'set3', 'set4', 'set5', 'set6', 'set7',
                    'set8', 'set9']
 
-    if position.value in buttonnames:  # We have just changed the positions integer value
+    # We have just changed the positions integer value
+    if position.value in buttonnames:
         text = position.value[-1]
         position.prev_state = position.value  # update prev_state as position value has changed
         # renders box over top of pencil values and draw position value
         get_text(60, "   ", default_colour, (xcentre, ycentre), BLACK)
         get_text(28, text, default_colour, (xcentre, ycentre), BLACK)
 
-    elif position.value in ['setempty', 'set0']:  # position value was removed by eraser or click with present value
-        # position is now empty - have to redraw to remove value and show pencil states
-        if position.prev_state in buttonnames:  # removed position value
-            position.prev_state = position.value
-            # draw over previous value
-            get_text(28, "  ", default_colour, (xcentre, ycentre), BLACK)
-            # draw pencil states
-            for value in position.pencil_values:
+    # check if position value is to be removed this frame, if so - remove value and show pencil states (if any)
+    elif position.value in ['setempty', 'set0']:
+        if position.prev_state in buttonnames:  # value has been cleared
+            position.prev_state = position.value  # update prev_state for next frame
+            get_text(28, "  ", default_colour, (xcentre, ycentre), BLACK)  # clear prev value by redrawing background
+            for value in position.pencil_values:  # draw pencil states
                 penciltext(position, mode='load', value=value)
-
-        else:  # position value is unchanged from last frame or changed between 'set0' and 'setempty' - take no action
-            pass
-    else:
-        pass
 
 
 def penciltext(position, mode=None, default_colour=BLUE, size=12, value=None):
@@ -549,9 +518,6 @@ def penciltext(position, mode=None, default_colour=BLUE, size=12, value=None):
         # draw the text to gamescreen
         get_text(size, text, default_colour, (xcentre, ycentre), BLACK)
 
-    else:  # there is a value in this position so dont draw the pencil values
-        pass
-
 
 def draw_startbuttons(textcolour=BLACK, boxcolour=None, text1=None, size=16, textcoords=None,
                       boxcoords=None, textalign=None, boxfill=None):
@@ -560,23 +526,14 @@ def draw_startbuttons(textcolour=BLACK, boxcolour=None, text1=None, size=16, tex
     if boxcoords is not None:
         if boxfill is not None:
             pygame.draw.rect(gamescreen, boxfill, boxcoords)
-        else:
-            pass
         if boxcolour is not None:
             pygame.draw.rect(gamescreen, boxcolour, boxcoords, 1)
-        else:
-            pass
-    else:
-        pass
-
+    # draws button text
     if textcoords is not None:
         if textalign == 'midleft':  # align button text to left of box
             get_text(size, text1, textcolour, textcoords, align="midleft")
         else:  # default text align is centre
             get_text(size, text1, textcolour, textcoords)
-
-    else:
-        pass
 
 
 def startscreenbuttons():
@@ -679,13 +636,10 @@ def searchfiles(searchterm):
             continue
 
         if searchterm == '!easy' or '!hard':  # codes to search for puzzles of given difficulty
-            # display the first 15 (max) easy/hard puzzle savefiles in the directory
-            try:
+            try:  # display the first 15 (max) easy/hard puzzle savefiles in the directory
                 if searchterm[1:] in puzzname:
                     textshown = child.name + '  ¦¦  ' + puzzname[:-1]
                     saves.append(textshown)
-                else:
-                    pass
             except IndexError:
                 pass
 
@@ -694,10 +648,7 @@ def searchfiles(searchterm):
                 if searchterm in child.name:
                     textshown = child.name + '  ¦¦  ' + puzzname[:-1]
                     saves.append(textshown)
-                else:
-                    pass
-            except IndexError:
-                # stuff
+            except IndexError:  # stuff
                 pass
 
     # set the loadfile buttons to show the text for the savefiles that were found with the search
@@ -820,36 +771,30 @@ def startscreen():
                 pygame.quit()
                 sys.exit()
 
+            # process downclicks on
             elif event.type == MOUSEBUTTONDOWN and event.button == 1:
+                # encompasses all easy state buttons
                 if 45 < event.pos[0] < 270 and 190 < event.pos[1] < 640:
-                    # encompasses all easy state buttons
-                    for button in Button.startbuttons[:50]:
-                        bx = button.coordinates[0]
-                        by = button.coordinates[1]
-                        bw = button.coordinates[2]
-                        bh = button.coordinates[3]
-                        if bx < event.pos[0] < (bx + bw) and by < event.pos[1] < (by + bh):
-                            num = int(button.text[4:])
-                            set_start_states(0, num)
-                            Position.puzzlenumber = 'easy' + str(num)
-                            # break while loop to continue to main loop after setting starting state of game
-                            return False
+                    # click is on a button with this index, or is None if on an edge
+                    easy_index = index_in_grid(event.pos, 45, 270, 190, 640, 5)
+                    if easy_index is not None:
+                        # determine puzzle number and set starting states using that information
+                        num = Button.startbuttons[easy_index] + 1  # puzzlenum is 1 greater than index
+                        set_start_states(0, num)
+                        Position.puzzlenumber = 'easy' + str(num)
+                        return False  # break while loop to continue to main loop after setting starting state of game
 
+                # encompasses all hard state buttons, same function as easy
                 elif 550 < event.pos[0] < 955 and 190 < event.pos[1] < 640:
-                    # encompasses all hard state buttons
-                    for button in Button.startbuttons[50:]:
-                        bx = button.coordinates[0]
-                        by = button.coordinates[1]
-                        bw = button.coordinates[2]
-                        bh = button.coordinates[3]
-                        if bx < event.pos[0] < (bx + bw) and by < event.pos[1] < (by + bh):
-                            num = int(button.text[4:])
-                            set_start_states(1, num)
-                            Position.puzzlenumber = 'hard'+str(num)
-                            return False  # break while loop to continue to main loop
+                    hard_index = index_in_grid(event.pos, 550, 955, 190, 640, 9)
+                    if hard_index is not None:
+                        num = int(Button.startbuttons[50 + hard_index].text[4:])
+                        set_start_states(1, num)
+                        Position.puzzlenumber = 'hard' + str(num)
+                        return False
 
+                # encompasses all load buttons - must confirm upclick on these buttons
                 elif 281 < event.pos[0] < 539 and 191 < event.pos[1] < 656:
-                    # encompasses all load buttons
                     for buttonkey in Button.startbutdict:
                         button = Button.startbutdict[buttonkey]
                         bx = button.coordinates[0]
@@ -859,19 +804,18 @@ def startscreen():
                         if bx < event.pos[0] < (bx + bw) and by < event.pos[1] < (by + bh):
                             Button.potential_click = button
                             break  # break for loop as clicked button was found
-                        else:
-                            pass
-                else:  # for a click outside of any button
+
+                else:  # for a click outside of any button, must reset search box
                     searchbox = Button.startbutdict['searchbox']
                     searchbox.state = 0
                     # coords alters coordinates so the boxfill wont draw over the outline - which it does otherwise
                     coords = [searchbox.coordinates[0] + 1, searchbox.coordinates[1] + 1,
                               searchbox.coordinates[2] - 2, searchbox.coordinates[3] - 2]
-                    if searchbox.text == '':  # reset the searhcbox text if empty
+                    if searchbox.text == '':  # reset the search box text if empty
                         searchbox.text = 'Search Files'
                         draw_startbuttons(textcolour=GRAY, text1=searchbox.text, textcoords=searchbox.textcoords,
                                           textalign='midleft')
-                    else:  # keep searchbox text but redraw in gray to show inactive
+                    else:  # keep search box text but redraw in gray to show inactive
                         draw_startbuttons(textcolour=GRAY, text1=searchbox.text, textcoords=searchbox.textcoords,
                                           textalign='midleft', boxcoords=coords, boxfill=BLACK)
 
@@ -885,12 +829,10 @@ def startscreen():
                     bh = b.coordinates[3]
                     if bx < event.pos[0] < (bx + bw) and by < event.pos[1] < (by + bh):
                         if b.name == 'fileload':
-                            # if clicked - if a loadfile is selected - load that file - if not do nothing
+                            # if clicked - if a loadfile is selected - load that file - if not, do nothing
                             # can be active while other button is active?
                             if Button.activestate is not None:
-                                # load the starting state from the filename linked to the active load button
-                                # loadgame(Button.startbutdict[Button.activestate].text)
-                                try:
+                                try:  # load the starting state from the filename linked to the active load button
                                     loadgame(Button.startbutdict[Button.activestate].text)
                                 except (IndexError, ValueError) as errors:
                                     # if file contents are not in the correct format as per the save function
@@ -898,8 +840,6 @@ def startscreen():
                                     # load values from lines in the text file
                                     print('File contains incorrect data...Please delete or move.')
                                     print('Error:', errors)
-                            else:
-                                pass
 
                         elif b.name == 'searchbox':
                             # redraw previously active loadfile button
@@ -961,10 +901,6 @@ def startscreen():
                                         draw_startbuttons(textcolour=WHITE, text1=b.text, textcoords=b.textcoords,
                                                           boxcolour=WHITE, boxcoords=b.coordinates,
                                                           textalign='midleft', boxfill=BLUE)
-                    else:  #
-                        pass
-                else:  # click wasnt on a button
-                    pass
 
             elif event.type == KEYDOWN:
                 # processing key presses for the load search box
@@ -972,8 +908,7 @@ def startscreen():
                 if searchbox.state == 1:  # if active
                     if searchbox.text == 'Search Files':
                         searchbox.text = ''  # remove the text so it can be changed by user
-                    else:
-                        pass
+
                     if event.key in range(32, 127):  # includes all standard characters on a keyboard
                         if len(searchbox.text) < 12:
                             searchbox.text += event.unicode
@@ -992,12 +927,9 @@ def startscreen():
                     elif event.key == 13:  # if enter pressed provides same functionality as hitting search
                         if Button.startbutdict['searchbox'].text != 'Search Files':
                             searchfiles(Button.startbutdict['searchbox'].text)
-                        pass
                     else:
                         #print(event.key)
                         print('Invalid character...')
-                else:
-                    pass
 
         # draw different box colours if hovered for easy puzzle boxes - only redraws on hover/unhover
         startscreenhover()
@@ -1091,9 +1023,7 @@ def resetboard():
             positiontext(pos, WHITE)
         elif pos.start_state == '0':
             if pos.value == 'set0':
-                if pos.pencil_values is []:  # no pencil values
-                    pass
-                else:
+                if pos.pencil_values is not []:  # have pencil values
                     for val2 in pos.pencil_values:
                         penciltext(pos, mode='load', value=val2)
             else:
@@ -1148,16 +1078,13 @@ def mainloop(timer=0, load=False):
             elif pos.start_state == '0':
                 # if no position value, check for pencil values to be drawn
                 if pos.value == 'set0':
-                    if pos.pencil_values is []:  # no pencil values
-                        pass
-                    else:  # has pencil values
+                    if pos.pencil_values is not []:  # no pencil values
                         for val in pos.pencil_values:
                             penciltext(pos, mode='load', value=val)
                 else:  # position has value to be drawn
                     positiontext(pos, BLUE)
-            else:
-                pass
 
+    # main game loop starts here with a while loop that is broken by returning False
     while True:
 
         def event_check():  # Function that checks and processes events during game loop - eg clicks/typing
@@ -1179,7 +1106,8 @@ def mainloop(timer=0, load=False):
                 # inside the object do not register
 
                 elif event.type == MOUSEBUTTONDOWN and event.button == 1:
-
+                    # TODO: could change to methods in classes eg onDown, onUp
+                    skip = 0
                     # check if board is displaying error pic to be removed on board click and redraw position values
                     if Position.errorPicShown:
                         # if clicked on board
@@ -1188,10 +1116,10 @@ def mainloop(timer=0, load=False):
                             Position.delay = 0
                             resetboard()
                             Position.errorPicShown = False  # reset attribute
+                            skip = 1
 
-                    # checks if a the left mouse button is downclicked
-                    skip = 0
-                    for but in Button.buttondict:  # check for each button
+                    # check for each button, if it was clicked
+                    for but in Button.buttondict:
                         b = Button.buttondict[but]
                         x = b.coordinates[0]
                         y = b.coordinates[1]
@@ -1199,133 +1127,130 @@ def mainloop(timer=0, load=False):
                         h = b.coordinates[3]
                         if x < event.pos[0] < x + w and y < event.pos[1] < y + h:
                             Button.potential_click = b  # set to remove unnecessary checks through
-                            # buttondict on every mouse upclick - same as for position (above)
-                            skip = 1
-                            # set skip to 1 if button set active so positions arent also checked
+                            # buttondict on every mouse upclick - same as for position
+                            skip = 1  # set skip to 1 if button set active so positions arent also checked
                             break  # stop searching buttons as only one is active each frame
-                        else:  # this includes any click outside of textbox - so resetting its state
-                            Button.buttondict['savetextbox'].state = 0
-                            if Button.buttondict['savetextbox'].text == '':
-                                Button.buttondict['savetextbox'].text = 'Enter File Name'
-                                drawbutton(Button.buttondict['savetextbox'], DGRAY)
-                            else:
-                                drawbutton(Button.buttondict['savetextbox'], DGRAY)
 
-                    if Button.activestate is not None and skip == 0:  # only check positions if a button is active
-                        # if so - check if the cursor is inside a position:
-                        for posi in Position.positionlist:  # check each position in the dictionary
-                            x1 = posi.coordinates[0]
-                            y1 = posi.coordinates[1]
-                            w1 = posi.coordinates[2]
-                            h1 = posi.coordinates[3]
-                            if x1 < event.pos[0] < x1 + w1 and y1 < event.pos[1] < y1 + h1:
-                                if posi.start_state != '0':
-                                    # if the position clicked is a starting state integer - take no action
-                                    # this means that they cannot be changed/interacted with
-                                    break
-                                else:
-                                    Position.potential_click = posi  # set to remove unnecessary checks through
-                                    # positionlist on every mouse upclick - just check if this value != None
-                                    break  # stop searching positions as only one is active each frame
-                            else:
-                                pass
-                    else:
-                        pass
+                    # check if any position was clicked only if a button is active, and there was no click on a button
+                    if 30 < event.pos[0] < 660 and 30 < event.pos[1] < 660 and \
+                            Button.activestate is not None and skip == 0:
+                        # if the remainder of the division of position by grid size is 0, then the mouse is on an edge
+                        p_col_remainder = (event.pos[0] - 30) % 70
+                        p_row_remainder = (event.pos[1] - 30) % 70
+                        # Process a click only if the mouse is not on a position edge
+                        if p_col_remainder != 0 and p_row_remainder != 0:
+                            # gives the row and column index of the position
+                            pos_col = (event.pos[0] - 30) // 70
+                            pos_row = (event.pos[1] - 30) // 70
+                            # the index of the position in the 9x9 grid, from 0-80
+                            pos_index = pos_col + pos_row * 9
+                            clicked_pos = Position.positionlist[pos_index]
+                            # set a variable in Position class only for changeable positions so upclicks can be
+                            # rejected if they did not pass all these checks for a click on a position
+                            if clicked_pos.start_state == '0':
+                                Position.potential_click = clicked_pos
 
+                # Checks if a left mouse button upclick occurs. Process button/position clicks only if a potential click
+                # has been registered from a downclick in the Position/Button classes. Do not have to check
+                # for button.activestate as downclick is only confirmed if activestate is not None. Deactivate the
+                # save text box if the upclick occurred anywhere outside of it.
                 elif event.type == MOUSEBUTTONUP and event.button == 1:
-                    # Checks if a left mouse button upclick occurs. Only take any action if a potential click
-                    # has been registered (as above) from a downclick in a position/button object
-
+                    # track the state of save text box, if any click outside of it occurs, then make it inactive
+                    textbox_active = False
+                    # If a downclick occurred on a Position object, it will be stored in the potential_click variable
+                    # else it will be None, isinstance checks this and removes IDE warnings when using that variable
                     if isinstance(Position.potential_click, Position):
                         p = Position.potential_click  # the position object which has been clicked (as set above)
                         x1 = p.coordinates[0]
                         y1 = p.coordinates[1]
                         w1 = p.coordinates[2]
                         h1 = p.coordinates[3]
+                        # if the upclick occurs in the same Position as downclicked, then it is a confirmed click
+                        if x1 < event.pos[0] < x1 + w1 and y1 < event.pos[1] < y1 + h1:
+                            if Button.pencilstate == 1:  # pencil button is active, change Position pencil value
+                                if Button.activestate == 'setempty':  # eraser is active, remove all pencil values
+                                    p.pencil_values = []
+                                    penciltext(p)
+                                else:  # if an integer button is active
+                                    if Button.activestate in p.pencil_values:  # remove pencil int if in position
+                                        penciltext(p, 'delete')
+                                        # remove value after redrawing as function needs the pencilvalue index
+                                        p.pencil_values.remove(Button.activestate)
+                                    else:  # add pencil int if not in position
+                                        p.pencil_values.append(Button.activestate)
+                                        penciltext(p, 'add')  # draw after adding
+                            else:  # inactive pencil button, change Position value
+                                if p.value == 'set0':  # position empty, add the value of the active button
+                                    p.value = Button.activestate
+                                elif p.value == Button.activestate:  # position value same as button, clear Position
+                                    p.value = 'set0'
+                                else:  # position value different to the active button state, change to button value
+                                    p.value = Button.activestate
+                                # redraws the position text if a state change has occurred (calls penciltext if needed)
+                                positiontext(p)
 
-                        if x1 < event.pos[0] < x1 + w1 and y1 < event.pos[1] < y1 + h1 and Button.pencilstate == 1:
-                            if Button.activestate == 'save':  # temporary code??
-                                break
-                            elif Button.activestate == 'setempty':
-                                p.pencil_values = []
-                                penciltext(p)
-                            else:  # if a integer button is active
-                                if Button.activestate in p.pencil_values:  # remove pencil int if in position
-                                    penciltext(p, 'delete')  # redraw over deleted pencil integer
-                                    p.pencil_values.remove(Button.activestate)  # remove after drawing empty textbox
-                                    # as function needs the pencilvalue index before deletion
-                                else:
-                                    p.pencil_values.append(Button.activestate)  # add pencil int if not in position
-                                    penciltext(p, 'add')  # draw in new pencil integer
-
-                        elif x1 < event.pos[0] < x1 + w1 and y1 < event.pos[1] < y1 + h1:
-                            # if position is empty add the integer of the active button
-                            if p.value == 'set0':
-                                p.value = Button.activestate
-                            # if position integer is same as active button then remove integer from the position
-                            elif p.value == Button.activestate:
-                                p.value = 'set0'
-                            # if position integer different to the active button state then change to button state
-                            else:
-                                p.value = Button.activestate
-                            # this function will redraw the position text if a state change has occurred
-                            positiontext(p)
-
-                        # have to reset potential click as full click rotation has occurred
+                        # reset potential click regardless of outcome as full click rotation has occurred
                         Position.potential_click = 0
 
                     elif Button.potential_click != 0:
-                        b = Button.potential_click  # the button object which has been clicked (as set above)
+                        b = Button.potential_click  # the button object which has been downclicked (as set above)
                         x = b.coordinates[0]
                         y = b.coordinates[1]
                         w = b.coordinates[2]
                         h = b.coordinates[3]
-                        # pencil code is separate so it can be on at same time as other buttons
-                        if x < event.pos[0] < x + w and y < event.pos[1] < y + h and b.name == 'pencil':
-                            b.clicked()  # change state of button
-                            if b.state == 1:
-                                Button.pencilstate = 1  # set pencil to active
-                                drawbutton(b, fill=DGRAY)
-                            else:  # if pencil state is 0 - update Button attribute
-                                Button.pencilstate = None  # clear pencil state
-                                drawbutton(b)
-                            pass
-                        elif x < event.pos[0] < x + w and y < event.pos[1] < y + h and b.name == 'savetextbox':
-                            #
-                            b.state = 1
-                            #Button.buttondict['savetextbox'].text = ''
-                            drawbutton(b, BLUE)
-                            pass
-                        elif x < event.pos[0] < x + w and y < event.pos[1] < y + h:
-                            b.clicked()
-                            if Button.activestate is None:  # if no button was active:
-                                Button.activestate = b.name  # set active to clicked button
-                                drawbutton(b, fill=DGRAY)
-                            elif Button.activestate is not None:  # if a button was active
-                                if Button.activestate == b.name:  # if clicked button is active
-                                    Button.activestate = None  # turn it off
-                                    drawbutton(b)
-                                else:  # if another button was active
-                                    Button.buttondict[Button.activestate].clicked()  # reset previous active button
-                                    drawbutton(Button.buttondict[Button.activestate])  # redraw previous active button
-                                    Button.activestate = b.name  # turn on clicked button
+                        # upclick occurred in same button as downclick, process confirmed click
+                        if x < event.pos[0] < x + w and y < event.pos[1] < y + h:
+                            if b.name == 'pencil':  # pencil code is separate so can be on at same time as other buttons
+                                b.clicked()  # change state of button
+                                if b.state == 1:  # pencil button now active, update object and graphic
+                                    Button.pencilstate = 1
                                     drawbutton(b, fill=DGRAY)
-                        else:
-                            pass
+                                else:  # pencil button now inactive
+                                    Button.pencilstate = None
+                                    drawbutton(b)
+                            elif b.name == 'savetextbox':  # save text box can also be active at same time as others
+                                textbox_active = True
+                                if b.state != 1:  # if it is not active, make it, else leave it active
+                                    b.state = 1
+                                    # Button.buttondict['savetextbox'].text = ''
+                                    drawbutton(b, BLUE)
+                            else:  # for the remaining buttons, only one can be active at a time
+                                b.clicked()
+                                if Button.activestate is None:  # if no button was active:
+                                    Button.activestate = b.name  # set active to clicked button
+                                    drawbutton(b, fill=DGRAY)
+                                elif Button.activestate is not None:  # if a button was active
+                                    if Button.activestate == b.name:  # if clicked button is active
+                                        Button.activestate = None  # turn it off
+                                        drawbutton(b)
+                                    else:  # another button was active, reset/redraw it before updating clicked Button
+                                        Button.buttondict[Button.activestate].clicked()  # previous
+                                        drawbutton(Button.buttondict[Button.activestate])  # previous
+                                        Button.activestate = b.name  # turn on clicked button
+                                        drawbutton(b, fill=DGRAY)
 
                         # reset potential click to 0 as a full click has occurred
                         # and need to be able to change to 1 to signify a new button click
                         Button.potential_click = 0
 
-                elif event.type == KEYDOWN:  # functionality to change button state using integer keys
+                    # if a click occurred outside of save text box, then deactivate it
+                    if not textbox_active:
+                        Button.buttondict['savetextbox'].state = 0
+                        if Button.buttondict['savetextbox'].text == '':
+                            Button.buttondict['savetextbox'].text = 'Enter File Name'
+                            drawbutton(Button.buttondict['savetextbox'], DGRAY)
+                        else:
+                            drawbutton(Button.buttondict['savetextbox'], DGRAY)
 
+                # functionality to change button state using integer keys
+                elif event.type == KEYDOWN:
                     savebox = Button.buttondict['savetextbox']
                     # textbox to enter a file name
                     if savebox.state == 1:
+                        # remove default message when clicked, so user can enter a file name
                         if savebox.text == 'Enter File Name':
                             savebox.text = ''
-                        else:
-                            pass
+                        # update the text box as user enters characters
                         if event.key in range(32, 127):  # includes all standard characters on a keyboard
                             if len(savebox.text) < 12:
                                 savebox.text += event.unicode
@@ -1337,18 +1262,15 @@ def mainloop(timer=0, load=False):
                             drawbutton(savebox, BLUE)
                         else:
                             print('Invalid character...')
-
                     else:  # interaction with number keys to change active button
                         try:
                             i = int(event.unicode)
                         except ValueError:
-                            print('bad key')
                             break
 
                         numlist = ['setempty', 'set1', 'set2', 'set3', 'set4', 'set5', 'set6', 'set7',
                                    'set8', 'set9']
                         b = Button.buttondict[numlist[i]]
-
                         b.clicked()
                         if Button.activestate is None:  # if no button was active:
                             Button.activestate = b.name  # set active to clicked button
@@ -1362,8 +1284,6 @@ def mainloop(timer=0, load=False):
                                 drawbutton(Button.buttondict[Button.activestate])  # redraw previous active button
                                 Button.activestate = b.name  # turn on clicked button
                                 drawbutton(b, fill=DGRAY)
-                else:
-                    pass
 
         event_check()
 
