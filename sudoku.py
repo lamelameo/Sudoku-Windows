@@ -354,16 +354,16 @@ def drawbutton(button, fill=BLACK, size=22):
         get_text(size, button.text, BLUE, button_centre)  # draw text in light gray
 
 
-def index_in_grid(event_pos, xlower, xupper, ylower, yupper, num_cols):
+def index_in_grid(event_pos, xlower, xupper, ylower, yupper, cell_size, num_cols):
     # determine what index in a grid an event occurred in, given the grid region's x and y bounds and the event position
     # return that index if the event occured in the grid, else return nothing
     if xlower < event_pos[0] < xupper and ylower < event_pos[1] < yupper:
         # gives the row and column index of the button in the easy grid
-        grid_col = (event_pos[0] - xlower) // 45
-        grid_row = (event_pos[1] - ylower) // 45
+        grid_col = (event_pos[0] - xlower) // cell_size
+        grid_row = (event_pos[1] - ylower) // cell_size
         # if the remainder of the division of position by grid size is 0, then the mouse is on an edge
-        col_remainder = (event_pos[0] - xlower) % 45
-        row_remainder = (event_pos[1] - ylower) % 45
+        col_remainder = (event_pos[0] - xlower) % cell_size
+        row_remainder = (event_pos[1] - ylower) % cell_size
         # calculate the index of the button in the grid of buttons, assuming a left-right, top-bottom indexing
         grid_index = grid_col + grid_row * num_cols
         # the mouse is hovering a button, not on a row or column edge
@@ -427,8 +427,8 @@ def startscreenhover():
         return False  # hover not in the region will fall all the way through to here without returning a value
 
     # determine if a hover was in the easy or hard grid, if it was the variable will be the index in the grid else None
-    easy_index = index_in_grid(mouse_pos, 45, 270, 190, 640, 5)
-    hard_index = index_in_grid(mouse_pos, 550, 955, 190, 640, 9)
+    easy_index = index_in_grid(mouse_pos, 45, 270, 190, 640, 45, 5)
+    hard_index = index_in_grid(mouse_pos, 550, 955, 190, 640, 45, 9)
     # check if a hover occurred in any region and process it, else clear hover from previous frame
     if easy_index is not None:
         hoveroutline(Button.startbuttons[easy_index], RED)
@@ -776,19 +776,19 @@ def startscreen():
                 # encompasses all easy state buttons
                 if 45 < event.pos[0] < 270 and 190 < event.pos[1] < 640:
                     # click is on a button with this index, or is None if on an edge
-                    easy_index = index_in_grid(event.pos, 45, 270, 190, 640, 5)
+                    easy_index = index_in_grid(event.pos, 45, 270, 190, 640, 45, 5)
                     if easy_index is not None:
                         # determine puzzle number and set starting states using that information
-                        num = Button.startbuttons[easy_index] + 1  # puzzlenum is 1 greater than index
+                        num = easy_index + 1  # puzzlenum is 1 greater than index
                         set_start_states(0, num)
                         Position.puzzlenumber = 'easy' + str(num)
                         return False  # break while loop to continue to main loop after setting starting state of game
 
                 # encompasses all hard state buttons, same function as easy
                 elif 550 < event.pos[0] < 955 and 190 < event.pos[1] < 640:
-                    hard_index = index_in_grid(event.pos, 550, 955, 190, 640, 9)
+                    hard_index = index_in_grid(event.pos, 550, 955, 190, 640, 45, 9)
                     if hard_index is not None:
-                        num = int(Button.startbuttons[50 + hard_index].text[4:])
+                        num = hard_index + 1
                         set_start_states(1, num)
                         Position.puzzlenumber = 'hard' + str(num)
                         return False
@@ -1132,18 +1132,9 @@ def mainloop(timer=0, load=False):
                             break  # stop searching buttons as only one is active each frame
 
                     # check if any position was clicked only if a button is active, and there was no click on a button
-                    if 30 < event.pos[0] < 660 and 30 < event.pos[1] < 660 and \
-                            Button.activestate is not None and skip == 0:
-                        # if the remainder of the division of position by grid size is 0, then the mouse is on an edge
-                        p_col_remainder = (event.pos[0] - 30) % 70
-                        p_row_remainder = (event.pos[1] - 30) % 70
-                        # Process a click only if the mouse is not on a position edge
-                        if p_col_remainder != 0 and p_row_remainder != 0:
-                            # gives the row and column index of the position
-                            pos_col = (event.pos[0] - 30) // 70
-                            pos_row = (event.pos[1] - 30) // 70
-                            # the index of the position in the 9x9 grid, from 0-80
-                            pos_index = pos_col + pos_row * 9
+                    if Button.activestate is not None and skip == 0:
+                        pos_index = index_in_grid(event.pos, 30, 660, 30, 660, 70, 9)
+                        if pos_index is not None:
                             clicked_pos = Position.positionlist[pos_index]
                             # set a variable in Position class only for changeable positions so upclicks can be
                             # rejected if they did not pass all these checks for a click on a position
