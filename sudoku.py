@@ -308,7 +308,7 @@ def get_text(size, text, text_col, coords, back_col=None, align=None):
         rect_obj.midleft = coords
     else:
         rect_obj.center = coords
-    gamescreen.blit(surface_obj, rect_obj)
+    GAMESCREEN.blit(surface_obj, rect_obj)
 
 
 def get_image(file_path, coords):
@@ -316,7 +316,7 @@ def get_image(file_path, coords):
     image_obj = pygame.image.load(file_path)
     rect_obj = image_obj.get_rect()
     rect_obj.center = coords
-    gamescreen.blit(image_obj, rect_obj)
+    GAMESCREEN.blit(image_obj, rect_obj)
 
 
 def drawbutton(button, fill=BLACK, size=22):
@@ -328,7 +328,7 @@ def drawbutton(button, fill=BLACK, size=22):
     button_centre = (button.coordinates[4], button.coordinates[5])
 
     # first, draw the button fill (for all button types)
-    pygame.draw.rect(gamescreen, fill, [x, y, width, height])
+    pygame.draw.rect(GAMESCREEN, fill, [x, y, width, height])
 
     # draw the button text
     if button.name == 'setempty':
@@ -344,7 +344,7 @@ def drawbutton(button, fill=BLACK, size=22):
         if button.state == 1:  # if textbox is active (clicked) draw text in white
             get_text(14, button.text, WHITE, button_centre)
         else:  # if inactive, draw over default black fill then draw black text
-            pygame.draw.rect(gamescreen, DGRAY, [x, y, width, height])  # draw box
+            pygame.draw.rect(GAMESCREEN, DGRAY, [x, y, width, height])  # draw box
             get_text(14, button.text, BLACK, button_centre)  # draw text
 
     elif button.name in ('pencil', 'clear', 'check', 'save'):
@@ -389,16 +389,16 @@ def startscreenhover():
             hovered_button.was_hovered = True
             Button.prev_hover = hovered_button
             # redraw the outline to hover colour
-            pygame.draw.rect(gamescreen, hover_outline, hovered_button.coordinates[:4], 1)
+            pygame.draw.rect(GAMESCREEN, hover_outline, hovered_button.coordinates[:4], 1)
 
     def clearhovered():
         # if no button is hovered, then have to check for a previous frame hover and update the buttons outline
         if Button.prev_hover is not None:
             # print('no current hover - but previous')
             if Button.prev_hover.name[:4] == "load":  # redraw load outlines black
-                pygame.draw.rect(gamescreen, BLACK, Button.prev_hover.coordinates[:4], 1)
+                pygame.draw.rect(GAMESCREEN, BLACK, Button.prev_hover.coordinates[:4], 1)
             else:  # redraw default outlines gray
-                pygame.draw.rect(gamescreen, GRAY, Button.prev_hover.coordinates[:4], 1)
+                pygame.draw.rect(GAMESCREEN, GRAY, Button.prev_hover.coordinates[:4], 1)
             Button.prev_hover.was_hovered = False
 
     def searchhovered(xlower, xupper, ylower, yupper):
@@ -455,11 +455,11 @@ def buttonhover(button, default_outline=BLUE, hover_outline=WHITE):
     if bx < mouse_pos[0] < (bx + bw) and by < mouse_pos[1] < (by + bh):
         if not button.was_hovered:  # button was not previously hovered so update outline
             button.was_hovered = True  # updates hovered for next frame
-            pygame.draw.rect(gamescreen, hover_outline, [bx, by, bw, bh], 1)  # redraw hover outline
+            pygame.draw.rect(GAMESCREEN, hover_outline, [bx, by, bw, bh], 1)  # redraw hover outline
     else:  # if button not hovered but was last frame, then update outline
         if button.was_hovered:
             button.was_hovered = False  # reset prev state for next frame
-            pygame.draw.rect(gamescreen, default_outline, [bx, by, bw, bh], 1)  # redraw default outline
+            pygame.draw.rect(GAMESCREEN, default_outline, [bx, by, bw, bh], 1)  # redraw default outline
 
 
 def positiontext(position, default_colour=BLUE):
@@ -525,9 +525,9 @@ def draw_startbuttons(textcolour=BLACK, boxcolour=None, text1=None, size=16, tex
     # draws a button outline
     if boxcoords is not None:
         if boxfill is not None:
-            pygame.draw.rect(gamescreen, boxfill, boxcoords)
+            pygame.draw.rect(GAMESCREEN, boxfill, boxcoords)
         if boxcolour is not None:
-            pygame.draw.rect(gamescreen, boxcolour, boxcoords, 1)
+            pygame.draw.rect(GAMESCREEN, boxcolour, boxcoords, 1)
     # draws button text
     if textcoords is not None:
         if textalign == 'midleft':  # align button text to left of box
@@ -667,7 +667,7 @@ def searchfiles(searchterm):
 
 def drawboard(back_colour=BLACK, line_colour=BLACK):
     # board background colour
-    pygame.draw.rect(gamescreen, back_colour, [20, 20, 650, 650])
+    pygame.draw.rect(GAMESCREEN, back_colour, [20, 20, 650, 650])
     # bold outer/block lines
     lines = [(30, 30), (30, 660), (240, 30), (240, 660), (450, 30), (450, 660), (660, 30), (660, 660),
              (30, 30), (660, 30), (30, 240), (660, 240), (30, 450), (660, 450), (30, 660), (660, 660)]
@@ -679,11 +679,11 @@ def drawboard(back_colour=BLACK, line_colour=BLACK):
 
     y = 1
     for x in range(0, 15, 2):
-        pygame.draw.line(gamescreen, line_colour, lines[x], lines[y], 4)
+        pygame.draw.line(GAMESCREEN, line_colour, lines[x], lines[y], 4)
         y = y + 2
     y = 1
     for x in range(0, 23, 2):
-        pygame.draw.line(gamescreen, line_colour, lines2[x], lines2[y], 1)
+        pygame.draw.line(GAMESCREEN, line_colour, lines2[x], lines2[y], 1)
         y = y + 2
 
 
@@ -710,8 +710,8 @@ def gametimer(mins, secs, paused=False):
     timestring = m + s
 
     # draw the fill outline and text of the timer
-    pygame.draw.rect(gamescreen, BLACK, [720, 45, 130, 40])
-    pygame.draw.rect(gamescreen, BLUE, [720, 50, 130, 40], 1)
+    pygame.draw.rect(GAMESCREEN, BLACK, [720, 45, 130, 40])
+    pygame.draw.rect(GAMESCREEN, BLUE, [720, 50, 130, 40], 1)
     get_text(24, timestring, WHITE, (785, 70))
 
 
@@ -743,17 +743,11 @@ def pyinit():
     # set name in window tab
     pygame.display.set_caption('Lameo Sudoku')
 
-
-pyinit()
-
-# TODO: gamescreen is used in almost all functions so needs to be accessible globally...
-# either leave as top level variable or put in a worthless class
-
-# gamescreen is created
-gamescreen = pygame.display.set_mode((1000, 690))
-
-clock = pygame.time.Clock()
-# background_image = pygame.image.load('gridpaper.bmp').convert() #not big enough image..
+    # global variables
+    global GAMESCREEN, CLOCK
+    GAMESCREEN = pygame.display.set_mode((1000, 690))
+    CLOCK = pygame.time.Clock()
+    # background_image = pygame.image.load('gridpaper.bmp').convert() #not big enough image..
 
 
 def startscreen():
@@ -782,7 +776,7 @@ def startscreen():
                         num = easy_index + 1  # puzzlenum is 1 greater than index
                         set_start_states(0, num)
                         Position.puzzlenumber = 'easy' + str(num)
-                        return False  # break while loop to continue to main loop after setting starting state of game
+                        return  # return from function to continue to main loop after setting starting state of game
 
                 # encompasses all hard state buttons, same function as easy
                 elif 550 < event.pos[0] < 955 and 190 < event.pos[1] < 640:
@@ -791,7 +785,7 @@ def startscreen():
                         num = hard_index + 1
                         set_start_states(1, num)
                         Position.puzzlenumber = 'hard' + str(num)
-                        return False
+                        return
 
                 # encompasses all load buttons - must confirm upclick on these buttons
                 elif 281 < event.pos[0] < 539 and 191 < event.pos[1] < 656:
@@ -934,7 +928,7 @@ def startscreen():
         # draw different box colours if hovered for easy puzzle boxes - only redraws on hover/unhover
         startscreenhover()
 
-        clock.tick(30)  # set maximum fps to 30
+        CLOCK.tick(30)  # set maximum fps to 30
         # updates the full screen every frame..docs say better to use on a full list than keep calling the function
         # TODO: MAKE A LIST CONTAINING ALL OBJECTS TO BE RENDERED THIS FRAME TO PASS IN THIS FUNCTION EACH FRAME??
         pygame.display.update()
@@ -1035,7 +1029,7 @@ def mainloop(timer=0, load=False):
     # resize screen to fit smaller game elements better - can just move stuff instead
     pygame.display.set_mode((900, 690))
     # background images that dont need redrawing each loop:
-    gamescreen.fill(BLACK)  # draws over the startscreen graphics for a black background
+    GAMESCREEN.fill(BLACK)  # draws over the startscreen graphics for a black background
     drawboard(BLACK, BLUE)  # draws game board
 
     # reset active button to none so no errors occur in event processing a new active button for first time in new loop
@@ -1062,7 +1056,7 @@ def mainloop(timer=0, load=False):
         bw = b.coordinates[2]
         bh = b.coordinates[3]
         # draw the button outlines
-        pygame.draw.rect(gamescreen, BLUE, [bx, by, bw, bh], 1)
+        pygame.draw.rect(GAMESCREEN, BLUE, [bx, by, bw, bh], 1)
 
     # drawing starting state and/or loaded values which are set/loaded into the class attributes from startscreen
     if load is False:
@@ -1336,7 +1330,7 @@ def mainloop(timer=0, load=False):
 
         pygame.display.update()
 
-        clock.tick(30)
+        CLOCK.tick(30)
         # checking efficiency by measuring how long a frame takes compared to set fps
         # print(clock.get_rawtime())
 
@@ -1355,6 +1349,7 @@ def main():
     buttonobjects()
 
     # start game
+    pyinit()
     startscreen()
     # startscreen exits while loop/finishes executing upon selection - mainloop now to be called to start game
     mainloop()
