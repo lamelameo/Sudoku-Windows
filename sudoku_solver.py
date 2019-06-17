@@ -43,69 +43,6 @@ solved_grid = [5, 3, 4, 6, 7, 8, 9, 1, 2,
                3, 4, 5, 2, 8, 6, 1, 7, 9]
 
 
-# create a save file for my sudoku game to display the outcome of the solver, to help determine what feature s
-# I must implement to create a fully working solver
-def solved_save_file(puzzle_num, text_file):
-    # open text file full of puzzles
-    file = open(text_file, 'r')
-    contents = []  # list of each puzzle in the file
-    for line in file:
-        stripped_line = line.strip()
-        contents.append(stripped_line)
-    file.close()
-
-    # create the puzzle string so we can solve it
-    grid_str = contents[puzzle_num]
-    grid_str = grid_str.replace(".", "0")
-    grid = [int(num) for num in grid_str]
-    hard_string = ""
-
-    # solve the puzzle
-    main_loop(grid)
-    # for num in grid:
-    #     hard_string += "set" + str(num)
-    # print(hard_string)
-
-    # save a file to be used to display the results using my sudoku game
-    savegame("hard"+str(puzzle_num)+"solved", "hard", str(puzzle_num))
-
-
-# TODO: put all my functions into a loop to hopefully solve a puzzle
-def main_loop(puzzle_num):
-    initialise(puzzle_num)
-    while SudokuCell.new_values:
-        check_new_vals()
-        update_cell_values()
-        check_group_possible_vals(SudokuCell.rows)
-        check_group_possible_vals(SudokuCell.columns)
-        check_group_possible_vals(SudokuCell.blocks)
-        block_rowcol_conflict()
-        check_group_possible_vals(SudokuCell.rows)
-        check_group_possible_vals(SudokuCell.columns)
-        check_group_possible_vals(SudokuCell.blocks)
-
-        # printing out updated grid for tracking progress...
-        grid = [[] for _ in range(9)]
-        counter = 1
-        for cell in SudokuCell.cell_list:
-            row = int(counter/9.1)
-            grid[row].append(cell.value)
-            counter += 1
-        print("updated grid")
-        for row in grid:
-            print(row)
-    print()
-    print("Correct Solution?", check_solution())
-
-    # possible_vals = ""
-    # for cell in SudokuCell.cell_list:
-    #     poss_vals = cell.possible_values
-    #     possible_vals += "-"
-    #     for val in poss_vals:
-    #         possible_vals += str(val)
-    # print(possible_vals)
-
-
 class SudokuCell:
     cell_list = []  # list populated with all the created cell objects -  used to access them
     rows = [[] for _ in range(9)]
@@ -139,6 +76,58 @@ class SudokuCell:
         self.block_index = block
 
 
+# create a save file for my sudoku game to display the outcome of the solver, to help determine what feature s
+# I must implement to create a fully working solver
+def solved_save_file(puzzle_num, text_file):
+    # open text file full of puzzles
+    file = open(text_file, 'r')
+    contents = []  # list of each puzzle in the file
+    for line in file:
+        stripped_line = line.strip()
+        contents.append(stripped_line)
+    file.close()
+
+    # create the puzzle string so we can solve it
+    grid_str = contents[puzzle_num]
+    grid_str = grid_str.replace(".", "0")
+    grid = [int(num) for num in grid_str]
+
+    # solve the puzzle
+    main_loop(grid)
+
+    # save a file to be used to display the results using my sudoku game
+    savegame("hard"+str(puzzle_num)+"solved", "hard", str(puzzle_num))
+
+
+# put all my functions into a loop to hopefully solve a puzzle
+def main_loop(puzzle_num):
+    # set starting state and remove possibilities from neighbours given those values
+    initialise(puzzle_num)
+    # continue looping till we have no more unset values, ie grid is solved, whether correct or not
+    while SudokuCell.unset_values:
+        # start by checking for any unset cells with only 1 possible value
+        update_cell_values()
+        # check groups for instances where the group has only 1 cell which can have a possible value
+        check_group_possible_vals(SudokuCell.rows)
+        check_group_possible_vals(SudokuCell.columns)
+        check_group_possible_vals(SudokuCell.blocks)
+        # check for cases in blocks where only 1 row or 1 column (out of the 3 overlapping) contains a possible value
+        block_rowcol_conflict()
+
+        # printing out updated grid for tracking progress...
+        grid = [[] for _ in range(9)]
+        counter = 1
+        for cell in SudokuCell.cell_list:
+            row = int(counter/9.1)
+            grid[row].append(cell.value)
+            counter += 1
+        print("updated grid")
+        for row in grid:
+            print(row)
+    print()
+    print("Correct Solution?", check_solution())
+
+
 def savegame(name, difficulty, puzzle_number):
 
     # create new text file with name entered
@@ -170,6 +159,8 @@ def savegame(name, difficulty, puzzle_number):
 
 
 def initialise(grid):
+
+    starting_values = []
     # insert 9 cells into each row in the grid
     for row in range(9):
         for col in range(9):
@@ -187,91 +178,112 @@ def initialise(grid):
             if grid[index] != 0:
                 cell.start_state = grid[index]
                 cell.value = grid[index]
-                SudokuCell.new_values.append(cell)
+                starting_values.append(cell)
             else:
                 SudokuCell.unset_values.append(cell)
 
-    new_values = []
-    for cell in SudokuCell.new_values:
-        new_values.append(cell.value)
-    print("new vals:", new_values)
+    # must now update all the neighbours of cells with starting values to remove possibilities
+    for cell in starting_values:
+        update_cell_neighbours(cell)
 
 
-def check_new_vals():
-    # iterate through new values list to eliminate possibilities in grid for unset cells in same groups
-    for cell in SudokuCell.new_values:
-        # check row
-        for neighbour in SudokuCell.rows[cell.row_index]:
-            if neighbour.value == 0:
-                print("deleting ROW possible value: ", cell.value)
-                print(neighbour.possible_values)
-                try:
-                    neighbour.possible_values.remove(cell.value)
-                except ValueError:
-                    pass
-        # check column
-        for neighbour in SudokuCell.columns[cell.col_index]:
-            if neighbour.value == 0:
-                print("deleting COL possible value: ", cell.value)
-                print(neighbour.possible_values)
-                try:
-                    neighbour.possible_values.remove(cell.value)
-                except ValueError:
-                    pass
-        # check block
-        for neighbour in SudokuCell.blocks[cell.block_index]:
-            if neighbour.value == 0:
-                print("deleting BLOCK possible value: ", cell.value)
-                print(neighbour.possible_values)
-                try:
-                    neighbour.possible_values.remove(cell.value)
-                except ValueError:
-                    pass
-        # checked all neighbours, remove value from list
-        SudokuCell.new_values.remove(cell)
+def update_cell_neighbours(sudoku_cell=None):
+    # given a cell which has been given a new value, update its neighbours in the same row, column, block to
+    # remove its value from their possible value lists
+    print("\nUPDATE CELL", sudoku_cell.index, "NEIGHBOURS")
+
+    def check_group(group, index):
+        for neighbour in group[index]:
+            # only check unset cells
+            if neighbour.value == 0 and sudoku_cell.value in neighbour.possible_values:
+                neighbour.possible_values.remove(sudoku_cell.value)
+                if group == SudokuCell.rows:
+                    print("updating ROW", index)
+                if group == SudokuCell.columns:
+                    print("updating COL", index)
+                if group == SudokuCell.blocks:
+                    print("updating BLOCK", index)
+
+    # user can supply a single cell to update only its neighbours, else function tests all new cells
+    check_group(SudokuCell.rows, sudoku_cell.row_index)
+    check_group(SudokuCell.columns, sudoku_cell.col_index)
+    check_group(SudokuCell.blocks, sudoku_cell.block_index)
+    print()
 
 
 def update_cell_values():
+    # check the unset values possible values lists to see if they have only 1 value, then must update that value
+    # call this to update cells after we have eliminated some possible values
+    print("\nUPDATE CELL VALUES")
+    cells_to_remove = []
     for cell in SudokuCell.unset_values:
-        print("possible values", cell.possible_values)
+        print("cell ", cell.index, "possible values:", cell.possible_values)
         if len(cell.possible_values) == 1:
-            print("new value")
+            print("cell ", cell.index, "new value: ", cell.possible_values[0])
             cell.value = cell.possible_values[0]
-            SudokuCell.unset_values.remove(cell)
-            SudokuCell.new_values.append(cell)
+            cells_to_remove.append(cell)
+            update_cell_neighbours(cell)
+    # TODO: unnecessary? using this because we are iterating through list while also potentially modifying it
+    for cell in cells_to_remove:
+        SudokuCell.unset_values.remove(cell)
 
 
-# TODO: need function to check possible values in groups and check if a value appears only once in the group, then
+# function to check possible values in groups and check if a value appears only once in the group, then
 # we can set that value in whatever cell it is in and update
 def check_group_possible_vals(groups):
+    print("\nCHECK GROUP POSSIBLE VALS")
     # check all 9 groups in the set (rows/cols/blocks)
+    count = 0
     for group in groups:
-        # use a dictionary to count frequency of each possible value, use a list as the value and append the cell
-        # object to the list if it had that value as a possible value
-        value_counter = {str(num): [] for num in range(1, 10)}
+        # use a dictionary to count frequency of each possible value, use a list as the value and append any cell
+        # object to the list if it had that value as a possible value, list should be min 1 cell long after checking
+        value_counter = {}
 
         for cell in group:
+            # only check unset cells
             if cell.value == 0:
                 for val in cell.possible_values:
-                    value_counter[str(val)].append(cell)
+                    if val in value_counter:
+                        value_counter[val].append(cell)
+                    else:
+                        value_counter[val] = [cell]
 
-        # check if any of the possible values only has appeared once in group, and then set that value for the cell
+        if groups == SudokuCell.rows:
+            print("ROW", count)
+        if groups == SudokuCell.columns:
+            print("COL", count)
+        if groups == SudokuCell.blocks:
+            print("BLOCK", count)
+
+        # print("frequencies:", value_counter)
+        for value in value_counter:
+            print("poss val", value, "freq:", len(value_counter[value]))
+
+        # check if any possible values has appeared only once in group, then set that value for the cell
         for poss_val in value_counter:
             if len(value_counter[poss_val]) == 1:
                 # get cell, update value, and move from unset, to new vals list
                 cell = value_counter[poss_val][0]
-                cell.value = int(poss_val)
+                print("possible value", poss_val, "can only be found at cell ", cell.index)
+                print(cell.possible_values)
+                # for test in group:
+                #     if test.value == 0:
+                #         print("cell ", test.index, "poss vals:", test.possible_values)
+                cell.value = poss_val
                 SudokuCell.unset_values.remove(cell)
-                SudokuCell.new_values.append(cell)
+                update_cell_neighbours(cell)
+        count += 1
 
 
-# TODO: need function to check for inferred row/col possibility remover from block
+# function to check for inferred row/col possibility remover from block
 # ie all instances of a value possibility within a block are also within a single row or column, then can check
 # the row/column for that value and remove from possibilities, as no matter which cell gets the value in the block
 # it will remove potential throughout the row/col  @@@ can check using group_index
 def block_rowcol_conflict():
+    print("\nBLOCK ROWCOL CONFLICT")
     block_counter = 0
     for block in SudokuCell.blocks:
+        # lists to append possible values to
         rows = [[], [], []]
         cols = [[], [], []]
         # put each cell in a list for its row and column
@@ -285,14 +297,14 @@ def block_rowcol_conflict():
                     relative_col_index = cell.col_index % 3
                     rows[relative_row_index].append(val)
                     cols[relative_col_index].append(val)
-        # check if values appear in only a column or only a row
-        # TODO: check all values, see if in
-        for num in range(1, 10):
-            # remove values from same group if we find a conflict
-            block_row = block_counter // 3
-            block_col = block_counter % 3
 
-            # check if value is in each row and column
+        # blocks are in a 3x3 grid, use the block row and col index
+        block_row = block_counter // 3
+        block_col = block_counter % 3
+        # check if values appear in only a column or only a row
+        print("block:", block_counter)
+        for num in range(1, 10):
+            # set variables for booleans which check if value is in each row and column, only check once for each num
             in_row0 = num in rows[0]
             in_row1 = num in rows[1]
             in_row2 = num in rows[2]
@@ -300,23 +312,42 @@ def block_rowcol_conflict():
             in_col1 = num in cols[1]
             in_col2 = num in cols[2]
 
-            def check_vals_in_group(relative_index, block_index, bool1, bool2, bool3):
-                if bool1 and not bool2 and not bool3:
-                    print("row0")
-                    row_to_check = relative_index + block_index * 3
-                    for cell_ in SudokuCell.rows[row_to_check]:
-                        if cell_.value == 0 and num in cell_.possible_values:
-                            cell_.possible_values.remove(num)
-            # check rows/remove possible values
-            check_vals_in_group(0, block_row, in_row0, in_row1, in_row2)
-            check_vals_in_group(1, block_row, in_row1, in_row0, in_row2)
-            check_vals_in_group(2, block_row, in_row2, in_row0, in_row1)
-            # check columns/remove possible values
-            check_vals_in_group(0, block_col, in_col0, in_col1, in_col2)
-            check_vals_in_group(0, block_col, in_col1, in_col0, in_col2)
-            check_vals_in_group(0, block_col, in_col2, in_col0, in_col1)
+            print("value:", num)
+            print("in rows 0,1,2:", in_row0, in_row1, in_row2)
+            print("in cols 0,1,2:", in_col0, in_col1, in_col2)
 
-    block_counter += 1
+            def check_vals_in_group(relative_index, block_index, groups, bool1, bool2, bool3):
+                # check the booleans
+                # if bool1 is True and bool2 is False and bool3 is False:
+                if bool1 and not bool2 and not bool3:
+                    # remove values from same group/different block if we find a conflict
+                    group_to_check = relative_index + block_index * 3
+                    count = 0
+                    for cell_ in groups[group_to_check]:
+                        if count == 0:
+                            if groups == SudokuCell.rows:
+                                print("conflict with num", num, "in block", block_counter, "row", group_to_check)
+                            if groups == SudokuCell.columns:
+                                print("conflict with num", num, "in block", block_counter, "col", group_to_check)
+                        count += 1
+                        # must ignore set values and those in the block we just checked
+                        if cell_.value == 0 and (cell_.block_index != block_counter) and num in cell_.possible_values:
+                            cell_.possible_values.remove(num)
+
+            # TODO: if we find an instance of a conflict, the other group cannot have one unless it is a single possible
+            # value, does this matter at all?
+
+            # check rows/remove possible values
+            check_vals_in_group(0, block_row, SudokuCell.rows, in_row0, in_row1, in_row2)
+            check_vals_in_group(1, block_row, SudokuCell.rows, in_row1, in_row0, in_row2)
+            check_vals_in_group(2, block_row, SudokuCell.rows, in_row2, in_row0, in_row1)
+            # check columns/remove possible values
+            check_vals_in_group(0, block_col, SudokuCell.columns, in_col0, in_col1, in_col2)
+            check_vals_in_group(1, block_col, SudokuCell.columns, in_col1, in_col0, in_col2)
+            check_vals_in_group(2, block_col, SudokuCell.columns, in_col2, in_col0, in_col1)
+
+        print()
+        block_counter += 1
 
 
 def check_solution():

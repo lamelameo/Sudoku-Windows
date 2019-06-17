@@ -613,6 +613,7 @@ def startscreenbuttons():
 
 
 def searchfiles(searchterm):
+    # TODO: bug - search test and no results appear, when clearly i have files with test in the name
 
     # created save folder when game is started if the folder doesnt already exist
     file_dir_path = os.path.dirname(os.path.realpath(__file__))
