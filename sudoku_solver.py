@@ -93,16 +93,23 @@ def solved_save_file(puzzle_num, text_file):
     grid = [int(num) for num in grid_str]
 
     # solve the puzzle
-    main_loop(grid)
+    solved = main_loop(grid)
 
     # save a file to be used to display the results using my sudoku game
-    savegame("hard"+str(puzzle_num)+"solved", "hard", str(puzzle_num))
+    if solved:
+        savegame("hard"+str(puzzle_num+1)+"solved", "hard", str(puzzle_num+1))
+    else:
+        savegame("hard"+str(puzzle_num+1)+"unsolved", "hard", str(puzzle_num+1))
 
 
-# put all my functions into a loop to hopefully solve a puzzle
-def main_loop(puzzle_num):
+# put all my functions into a loop to hopefully solve a puzzle, if successfully solved return True, else False
+# If get stuck in loop with unchanging grid and possible values, then return False
+def main_loop(puzzle_grid):
     # set starting state and remove possibilities from neighbours given those values
-    initialise(puzzle_num)
+    initialise(puzzle_grid)
+    prev_values = []
+    prev_poss_values = []
+
     # continue looping till we have no more unset values, ie grid is solved, whether correct or not
     while SudokuCell.unset_values:
         # start by checking for any unset cells with only 1 possible value
@@ -113,6 +120,8 @@ def main_loop(puzzle_num):
         check_group_possible_vals(SudokuCell.blocks)
         # check for cases in blocks where only 1 row or 1 column (out of the 3 overlapping) contains a possible value
         block_rowcol_conflict()
+        # check for cases in rows and columns where only 1 block (of 3 overlapping) contains a possible value
+        rowcol_block_conflict()
 
         # printing out updated grid for tracking progress...
         grid = [[] for _ in range(9)]
@@ -124,8 +133,25 @@ def main_loop(puzzle_num):
         print("updated grid")
         for row in grid:
             print(row)
+
+        # get grid values
+        values = [cell.value for cell in SudokuCell.cell_list]
+        # grid values are unchanged from last loop, check if possible values are unchanged
+        if prev_values == values:
+            print("grid values unchanged...")
+            poss_values = [cell.possible_values for cell in SudokuCell.cell_list]
+            # if possible values are unchanged from last loop, we can save game state and terminate
+            if prev_poss_values == poss_values:
+                print("grid possible values unchanged...stuck in loop with unsolvable grid")
+                return False
+            else:  # update for next loop
+                prev_poss_values = poss_values
+        else:  # update for next loop
+            prev_values = values
+
     print()
     print("Correct Solution?", check_solution())
+    return check_solution()
 
 
 def savegame(name, difficulty, puzzle_number):
@@ -231,6 +257,7 @@ def update_cell_values():
 # function to check possible values in groups and check if a value appears only once in the group, then
 # we can set that value in whatever cell it is in and update
 def check_group_possible_vals(groups):
+    #TODO: known as hidden singles
     print("\nCHECK GROUP POSSIBLE VALS")
     # check all 9 groups in the set (rows/cols/blocks)
     count = 0
@@ -283,6 +310,8 @@ def block_rowcol_conflict():
     print("\nBLOCK ROWCOL CONFLICT")
     block_counter = 0
     for block in SudokuCell.blocks:
+        # only want to check unset values in the block, so must track them
+        vals_to_check = []
         # lists to append possible values to
         rows = [[], [], []]
         cols = [[], [], []]
@@ -297,13 +326,15 @@ def block_rowcol_conflict():
                     relative_col_index = cell.col_index % 3
                     rows[relative_row_index].append(val)
                     cols[relative_col_index].append(val)
+                    if val not in vals_to_check:
+                        vals_to_check.append(val)
 
         # blocks are in a 3x3 grid, use the block row and col index
         block_row = block_counter // 3
         block_col = block_counter % 3
         # check if values appear in only a column or only a row
         print("block:", block_counter)
-        for num in range(1, 10):
+        for num in vals_to_check:
             # set variables for booleans which check if value is in each row and column, only check once for each num
             in_row0 = num in rows[0]
             in_row1 = num in rows[1]
@@ -350,6 +381,81 @@ def block_rowcol_conflict():
         block_counter += 1
 
 
+# Inverse of block rowcol conflict - If a row or column can only have a possible value in cells within 1 of the 3
+# possible intersecting blocks, then no matter where in that row/column it is placed, it cannot be placed anywhere else
+# in that block, so we can remove it from the possible values of the remaining cells in that block
+def rowcol_block_conflict():
+    print("\nROWCOL BLOCK CONFLICT")
+    rows_and_cols = [SudokuCell.rows, SudokuCell.columns]
+    checking_rows = True
+    for groups in rows_and_cols:
+        group_counter = 0
+        for sub_group in groups:
+            # only check the possible values and not the ones already set in that group
+            vals_to_check = []
+            # lists to append possible values to - each group has 3 blocks it intersects with
+            blocks = [[], [], []]
+            block_indexes = []
+            counter = 0
+            for cell in sub_group:
+                # save the block indexes for when we have to remove values from the block - useful for columns
+                if counter % 3 == 0:
+                    block_indexes.append(cell.block_index)
+                counter += 1
+                # for unset values, check the possible values and add to the relative block lists
+                if cell.value == 0:
+                    # relative block index depends on if we are checking row or column, as they increment differently
+                    if checking_rows:  # increments by 1 each new block
+                        relative_block_index = cell.block_index % 3
+                    else:  # increments by 3 each new block
+                        relative_block_index = cell.block_index // 3
+                    for val in cell.possible_values:
+                        blocks[relative_block_index].append(val)
+                        if val not in vals_to_check:
+                            vals_to_check.append(val)
+
+            for num in vals_to_check:
+                # set variables for booleans which check if value is in each block, essentially using an exclusive or
+                in_block0 = num in blocks[0]
+                in_block1 = num in blocks[1]
+                in_block2 = num in blocks[2]
+
+                def check_vals_in_blocks(block_index, bool1, bool2, bool3):
+                    # check the booleans
+                    if bool1 and not bool2 and not bool3:
+                        # remove values from same block if we find a conflict
+                        for cell_ in SudokuCell.blocks[block_index]:
+                            # must check the row/col index for the cell to ignore the cells in row/col we are checking
+                            if checking_rows:
+                                cell_group_index = cell.row_index
+                                print("conflict with num", num, "in block", block_index, "row", group_counter)
+                            else:
+                                cell_group_index = cell.col_index
+                                print("conflict with num", num, "in block", block_index, "col", group_counter)
+                            # ignore set values and those in the row we are checking, and cells without the poss value
+                            if cell_.value == 0 and (cell_group_index != group_counter) and num in cell_.possible_values:
+                                cell_.possible_values.remove(num)
+
+                # check rows/remove possible values
+                check_vals_in_blocks(block_indexes[0], in_block0, in_block1, in_block2)
+                check_vals_in_blocks(block_indexes[1], in_block1, in_block0, in_block2)
+                check_vals_in_blocks(block_indexes[2], in_block2, in_block0, in_block1)
+
+            print()
+            group_counter += 1
+        # update before moving to columns
+        checking_rows = False
+
+
+def hidden_pairs():
+    # TODO: for each block must check relative rows and cols
+    pass
+
+
+def naked_pairs_or_triples():
+    pass
+
+
 def check_solution():
 
     values = [1, 2, 3, 4, 5, 6, 7, 8, 9]  # position values
@@ -376,5 +482,5 @@ def check_solution():
         return False
 
 
-solved_save_file(0, "hardsudokupuzzles.txt")
+solved_save_file(89, "hardsudokupuzzles.txt")
 

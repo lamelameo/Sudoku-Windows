@@ -733,7 +733,7 @@ def pyinit():
     pygame.init()
     # Centring the game window using os module
     os.environ['SDL_VIDEO_WINDOW_POS'] = '200, 35'
-    #print(pygame.display.get_driver())
+    # print(pygame.display.get_driver())
 
     # set game icon as a small sudoku image
     try:
@@ -923,7 +923,7 @@ def startscreen():
                         if Button.startbutdict['searchbox'].text != 'Search Files':
                             searchfiles(Button.startbutdict['searchbox'].text)
                     else:
-                        #print(event.key)
+                        # print(event.key)
                         print('Invalid character...')
 
         # draw different box colours if hovered for easy puzzle boxes - only redraws on hover/unhover
@@ -1303,7 +1303,7 @@ def mainloop(timer=0, load=False):
         # timer function: every frame increments counter then resets to 0 at 30 (change for diff fps)
         if counting == 30:
             timer += 1
-            #hours = str(timer//3600)
+            # hours = str(timer//3600)
             minutes = str(timer // 60)
             seconds = str(timer % 60)
             gametimer(minutes, seconds)
