@@ -2,26 +2,6 @@
 
 import os
 
-#  --------------------------------------------
-# | 01 - 02 - 03 | 04 - 05 - 06 | 07 - 08 - 09 |
-# |    .    .    |    .    .    |    .    .    |
-# | 10 - 11 - 12 | 13 - 14 - 15 | 16 - 17 - 18 |
-# |    .    .    |    .    .    |    .    .    |
-# | 19 - 20 - 21 | 22 - 23 - 24 | 25 - 26 - 27 |
-# |--------------|--------------|--------------|
-# | 28 - 29 - 30 | 31 - 32 - 33 | 34 - 35 - 36 |
-# |    .    .    |    .    .    |    .    .    |
-# | 37 - 38 - 39 | 40 - 41 - 42 | 43 - 44 - 45 |
-# |    .    .    |    .    .    |    .    .    |
-# | 46 - 47 - 48 | 49 - 50 - 51 | 52 - 53 - 54 |
-# |--------------|--------------|--------------|
-# | 55 - 56 - 57 | 58 - 59 - 60 | 61 - 62 - 63 |
-# |    .    .    |    .    .    |    .    .    |
-# | 64 - 65 - 66 | 67 - 68 - 69 | 70 - 71 - 72 |
-# |    .    .    |    .    .    |    .    .    |
-# | 73 - 74 - 75 | 76 - 77 - 78 | 79 - 80 - 81 |
-#  --------------------------------------------
-
 test_grid = [5, 3, 0, 0, 7, 0, 0, 0, 0,
              6, 0, 0, 1, 9, 5, 0, 0, 0,
              0, 9, 8, 0, 0, 0, 0, 6, 0,
@@ -122,6 +102,8 @@ def main_loop(puzzle_grid):
         block_rowcol_conflict()
         # check for cases in rows and columns where only 1 block (of 3 overlapping) contains a possible value
         rowcol_block_conflict()
+        # check for naked pairs/triples
+        naked_pairs_or_triples()
 
         # printing out updated grid for tracking progress...
         grid = [[] for _ in range(9)]
@@ -453,7 +435,47 @@ def hidden_pairs():
 
 
 def naked_pairs_or_triples():
-    pass
+    # check all groups for naked pairs/triples
+    for group in [SudokuCell.rows, SudokuCell.columns, SudokuCell.blocks]:
+        for subgroup in group:
+            # count number of times any unique pair or triple is seen - no bugs are possible with equivalent pairs eg.
+            # (1,2) or (2,1), as possible values are all in order, so any pair or triple will be in same order\
+            pairs = {}
+            triples = {}
+            for cell_ in subgroup:
+                # only check unset cells
+                if cell_.value == 0:
+                    # save any pair seen in a dict, the key being the values as a string, the value being a list which
+                    # contains the cell. Another cell with the same possible values is added to the same dict entry
+                    poss_vals = cell_.possible_values
+                    if len(poss_vals) == 2:
+                        if str(poss_vals) in pairs:
+                            pairs[str(poss_vals)].append(cell_)
+                        else:
+                            pairs[str(poss_vals)] = [cell_]
+                    # triples
+                    elif len(poss_vals) == 3:
+                        if str(poss_vals) in triples:
+                            triples[str(poss_vals)].append(cell_)
+                        else:
+                            triples[str(poss_vals)] = [cell_]
+
+            # If we have any naked pairs/triples, the dict value will be a list of cells of length 2 or 3, respectively.
+            # Remove the pair/triple possible values from all unset cells which are not part of the pair/triple
+            def check_pair_triple(dictionary, length):
+                for combination in dictionary:
+                    if len(dictionary[combination]) == length:
+                        # get the combo cells and values and then remove the values from any other cell in the group
+                        combo_cells = dictionary[combination]
+                        combo_vals = combo_cells[0].possible_values
+                        for cell_ in subgroup:
+                            # make sure cell is unset and not in the combo
+                            if cell_.value == 0 and cell_ not in combo_cells:
+                                for poss_val in combo_vals:
+                                    if poss_val in cell_.possible_values:
+                                        cell_.possible_values.remove(poss_val)
+            check_pair_triple(pairs, 2)
+            check_pair_triple(triples, 3)
 
 
 def check_solution():
