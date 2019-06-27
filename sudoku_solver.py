@@ -103,7 +103,8 @@ def main_loop(puzzle_grid):
         # check for cases in rows and columns where only 1 block (of 3 overlapping) contains a possible value
         rowcol_block_conflict()
         # check for naked pairs/triples
-        naked_pairs_or_triples()
+        # naked_pairs_or_triples()
+        hidden_pairs_triples()
 
         # printing out updated grid for tracking progress...
         grid = [[] for _ in range(9)]
@@ -429,11 +430,6 @@ def rowcol_block_conflict():
         checking_rows = False
 
 
-def hidden_pairs():
-    # TODO: for each block must check relative rows and cols
-    pass
-
-
 def naked_pairs_or_triples():
     # check all groups for naked pairs/triples
     for group in [SudokuCell.rows, SudokuCell.columns, SudokuCell.blocks]:
@@ -442,27 +438,24 @@ def naked_pairs_or_triples():
             # (1,2) or (2,1), as possible values are all in order, so any pair or triple will be in same order\
             pairs = {}
             triples = {}
-            for cell_ in subgroup:
-                # only check unset cells
-                if cell_.value == 0:
-                    # save any pair seen in a dict, the key being the values as a string, the value being a list which
-                    # contains the cell. Another cell with the same possible values is added to the same dict entry
-                    poss_vals = cell_.possible_values
-                    if len(poss_vals) == 2:
-                        if str(poss_vals) in pairs:
-                            pairs[str(poss_vals)].append(cell_)
-                        else:
-                            pairs[str(poss_vals)] = [cell_]
-                    # triples
-                    elif len(poss_vals) == 3:
-                        if str(poss_vals) in triples:
-                            triples[str(poss_vals)].append(cell_)
-                        else:
-                            triples[str(poss_vals)] = [cell_]
 
-            # If we have any naked pairs/triples, the dict value will be a list of cells of length 2 or 3, respectively.
-            # Remove the pair/triple possible values from all unset cells which are not part of the pair/triple
             def check_pair_triple(dictionary, length):
+                # Save any pair seen in a dict, the key being the values as a string, the value being a list which
+                # contains the cell. Another cell with the same possible values is added to the same dict entry.
+                # TODO: could search through group only once to count pairs and triples, but unsure if they can mess
+                # TODO: with each other...so just search and process each separately
+                for cell_ in subgroup:
+                    # only check unset cells
+                    if cell_.value == 0:
+                        poss_vals = cell_.possible_values
+                        if len(poss_vals) == length:
+                            if str(poss_vals) in dictionary:
+                                dictionary[str(poss_vals)].append(cell_)
+                            else:
+                                dictionary[str(poss_vals)] = [cell_]
+
+                # For a naked pair/triple, the dict value will be a list of cells of length 2 or 3, respectively.
+                # Remove the pair/triple possible values from all unset cells which are not part of the pair/triple.
                 for combination in dictionary:
                     if len(dictionary[combination]) == length:
                         # get the combo cells and values and then remove the values from any other cell in the group
@@ -476,6 +469,95 @@ def naked_pairs_or_triples():
                                         cell_.possible_values.remove(poss_val)
             check_pair_triple(pairs, 2)
             check_pair_triple(triples, 3)
+
+
+def hidden_pairs_triples():
+    for group in [SudokuCell.rows, SudokuCell.columns, SudokuCell.blocks]:
+        for subgroup in group:
+            # TODO: check each cell, if poss vals > 1 check all combinations (p/t), add to dict,
+            # after all cells checked we have frequency of each combination, if = 2/3 then we have hidden combo
+            # TODO: this should find any naked pairs too?? hidden have to be only instances of values in group,
+            # naked can have extras, as long as only those values are in the pair/triple cells, could distinguish after
+            # finding them though, ie go through determining combos, then do checks to determine if its hidden/naked
+
+            # count number of times any unique pair or triple is seen - no bugs are possible with equivalent pairs eg.
+            # (1,2) or (2,1), as possible values are all in order, so any pair or triple will be in same order\
+            triples = {}
+            pairs = {}
+
+            def check_pair_triple(length, dictionary):
+                # Save any pair seen in a dict, the key being the values as a string, the value being a list which
+                # contains the cell. Another cell with the same possible values is added to the same dict entry.
+
+                # frequencies must be re-initialised as we call function separately for pairs and triples
+                val_frequencies = {}
+                for cell_ in subgroup:
+                    # only check unset cells
+                    if cell_.value == 0:
+                        poss_vals = cell_.possible_values
+                        if len(poss_vals) >= length:
+                            # TODO: current method, need to count freq of each poss val, in case there is extra nums
+                            # TODO: freq of vals. Need to check only 2 of each in pair in group, of 3 for triples...
+                            # OTHERWISE: create combos and check each
+                            pair_list = []
+                            triple_list = []
+                            # determines pair combinations - only looking for ordered combos, so just check all values
+                            # after the current
+                            for index, val in enumerate(poss_vals):
+                                # count frequencies of each possible value for each cell in group
+                                if val in val_frequencies:
+                                    val_frequencies[val] += 1
+                                else:
+                                    val_frequencies[val] = 1
+                                # take combinations with values in front of current only - dont want reversed combos
+                                for combo_val in poss_vals[index+1:]:
+                                    pair_list.append([val, combo_val])
+                            # skip triples if we only have 2 values, add pairs to dict first, then move to next cell
+                            if length == 2:
+                                # add pairs to dictionary, with the pair as index 0, for ease of access later
+                                for pair in pair_list:
+                                    if str(pair) in pairs:
+                                        pairs[str(pair)].append(cell_)
+                                    else:
+                                        pairs[str(pair)] = [pair, cell_]
+                                continue
+                            # determines triple combinations by using each pair and adding each of the next values
+                            for pair in pair_list:
+                                # index of next value after pair is equal to the 2nd value - start here and increment
+                                combo_val_index = pair[-1]
+                                for combo_val in poss_vals[combo_val_index:]:
+                                    triple_list.append(pair + [combo_val])
+                            # add pairs to dictionary
+                            for triple in triple_list:
+                                if str(triple) in triples:
+                                    triples[str(triple)].append(cell_)
+                                else:
+                                    triples[str(triple)] = [triple, cell_]
+
+                # For a hidden pair/triple, the dict value will be a list of cells of length 3 or 4, respectively.
+                # Index 0 is the pair/triple for access here, so makes the list 1 longer
+                # The frequency of the possible values must be 2 or 3, respectively, else is not a hidden pair/triple.
+                # Remove the pair/triple possible values from all unset cells which are not part of the pair/triple.
+                for combination in dictionary:
+                    if len(dictionary[combination]) - 1 == length:
+                        # get the pair/triple values and check the frequencies of each value, if any are not 2 or 3
+                        # then move to next combination, as this is not a viable hidden pair/triple
+                        combo_vals = dictionary[combination][0]
+                        hidden_combo = True
+                        for value in combo_vals:
+                            if val_frequencies[value] != length:
+                                hidden_combo = False
+                        if not hidden_combo:
+                            continue
+                        # Valid hidden pair/triple - process rest of the possible values in the pair/triple cells
+                        combo_cells = dictionary[combination][1:]
+                        for cell_ in combo_cells:
+                            for poss_val in cell_.possible_values:
+                                if poss_val not in combo_vals:
+                                    cell_.possible_values.remove(poss_val)
+
+            check_pair_triple(2, pairs)
+            check_pair_triple(3, triples)
 
 
 def check_solution():
