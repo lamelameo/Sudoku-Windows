@@ -14,7 +14,7 @@ def set_start_states(difficulty, puzzlenum):
 
     if difficulty == 0:  # process easy puzzle selection
         # open the file and strip newline characters/whitespace for each line then append to a list
-        file = open('sudokuezpuzzles.txt', 'r')
+        file = open("sudoku_resources\\sudokuezpuzzles.txt", 'r')
         sudoku = []
         for line in file:
             thing = line.strip()
@@ -31,7 +31,7 @@ def set_start_states(difficulty, puzzlenum):
 
     elif difficulty == 1:  # process hard puzzle selection
         # open the file and strip newline characters/whitespace for each line then append to a list
-        file2 = open('hardsudokupuzzles.txt', 'r')
+        file2 = open("sudoku_resources\\hardsudokupuzzles.txt", 'r')
         sudoku = []
         for line in file2:
             stripped_line = line.strip()

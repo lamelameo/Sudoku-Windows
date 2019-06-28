@@ -60,7 +60,7 @@ class SudokuCell:
 # I must implement to create a fully working solver
 def solved_save_file(puzzle_num, text_file):
     # open text file full of puzzles
-    file = open(text_file, 'r')
+    file = open("sudoku_resources\\"+text_file, 'r')
     contents = []  # list of each puzzle in the file
     for line in file:
         stripped_line = line.strip()
