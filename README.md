@@ -1,7 +1,8 @@
 # Sudoku-Windows
 My first programming project - a simple sudoku game for windows written in a single ~1400 line, messy python script.
-Running the program will create a savefile folder in the same directory as the script. Also added an accompanying script
-to solve puzzles and create savefiles to view the outcome in the game (for use while writing/improving the code).
+Running the program will create a savefile folder in the same directory as the script.
+Also added an accompanying script to solve puzzles and create savefiles to view the outcome in the game. The savefiles
+were for use while writing/improving the code, however, it could be altered to be used as a hint feature in the game.
 
 Requirements:
 - 1000 x 690 minimum screen resolution.

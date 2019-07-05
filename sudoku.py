@@ -198,7 +198,7 @@ def rules():
     # if each group passed all the checks - should end game and bring up an image saying you won
     if check_groups(rows) and check_groups(columns) and check_groups(blocks):
         try:
-            get_image("sudoku_correct.png", (400, 345))
+            get_image("sudoku_resources\\sudoku_correct.png", (400, 345))
         except pygame.error as errorMessage:  # displays text only if image cant be found
             error_text = str(errorMessage)[14:]
             win_text = "YOU WIN..." + "*Missing File: " + error_text + "*"
@@ -210,7 +210,7 @@ def rules():
         print('\nCHECK FOR MISTAKES...\n')
         print('ROW 1-9: top-bottom\nCOLUMN 1-9: left-right\nBLOCK 1-9: left-right then top-bottom')
         try:
-            get_image("sudoku_error.png", (400, 345))
+            get_image("sudoku_resources\\sudoku_error.png", (400, 345))
             Position.errorPicShown = True
         except pygame.error as errorMessage:  # display text if error picture isnt found
             print(errorMessage)
@@ -333,7 +333,7 @@ def drawbutton(button, fill=BLACK, size=22):
     # draw the button text
     if button.name == 'setempty':
         try:  # try load eraser image else use text for button
-            get_image("eraser3.png", (752.5, 135))
+            get_image("sudoku_resources\\eraser3.png", (752.5, 135))
         # couldnt find image, use text instead, give warning
         except pygame.error as image_error:
             print("Warning - Missing Button Image File: " + str(image_error)[14:])
@@ -583,7 +583,7 @@ def startscreenbuttons():
     draw_startbuttons(boxcolour=GRAY, boxcoords=[495, 191, 44, 44])
 
     try:  # set search button image, if image missing use text
-        get_image("searchimage.png", (517, 213))
+        get_image("sudoku_resources\\searchimage.png", (517, 213))
     except pygame.error as search_error:
         error_text = str(search_error)[14:]
         print("*Missing Search Image Button File: " + error_text + "*")
@@ -737,7 +737,7 @@ def pyinit():
 
     # set game icon as a small sudoku image
     try:
-        icon = pygame.image.load('sudoku_icon.bmp')
+        icon = pygame.image.load('sudoku_resources\\sudoku_icon.bmp')
         pygame.display.set_icon(icon)
     except pygame.error as error_message:
         print(error_message)
@@ -748,7 +748,7 @@ def pyinit():
     global GAMESCREEN, CLOCK
     GAMESCREEN = pygame.display.set_mode((1000, 690))
     CLOCK = pygame.time.Clock()
-    # background_image = pygame.image.load('gridpaper.bmp').convert() #not big enough image..
+    # background_image = pygame.image.load('sudoku_resources\\gridpaper.bmp').convert() #not big enough image..
 
 
 def startscreen():

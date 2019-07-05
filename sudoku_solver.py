@@ -502,7 +502,7 @@ def hidden_pairs_triples():
                             pair_list = []
                             triple_list = []
                             # determines pair combinations - only looking for ordered combos, so just check all values
-                            # after the current
+                            # after the current TODO: could use itertools.combinations()
                             for index, val in enumerate(poss_vals):
                                 # count frequencies of each possible value for each cell in group
                                 if val in val_frequencies:
