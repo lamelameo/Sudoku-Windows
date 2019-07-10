@@ -1,4 +1,4 @@
-""" sudoku solver using human style logic strategy """
+""" Sudoku solver using human style logic strategy """
 
 import os
 

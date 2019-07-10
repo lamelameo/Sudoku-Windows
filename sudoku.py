@@ -1,10 +1,178 @@
-""" attempt at a sudoku game """
+""" Attempt at a sudoku game """
 
 import pygame
 import sys
 import os
 from pygame.locals import *
 import pathlib
+
+#  --------------------------------------------
+# | 01 - 02 - 03 | 04 - 05 - 06 | 07 - 08 - 09 |
+# |    .    .    |    .    .    |    .    .    |
+# | 10 - 11 - 12 | 13 - 14 - 15 | 16 - 17 - 18 |
+# |    .    .    |    .    .    |    .    .    |
+# | 19 - 20 - 21 | 22 - 23 - 24 | 25 - 26 - 27 |
+# |--------------|--------------|--------------|
+# | 28 - 29 - 30 | 31 - 32 - 33 | 34 - 35 - 36 |
+# |    .    .    |    .    .    |    .    .    |
+# | 37 - 38 - 39 | 40 - 41 - 42 | 43 - 44 - 45 |
+# |    .    .    |    .    .    |    .    .    |
+# | 46 - 47 - 48 | 49 - 50 - 51 | 52 - 53 - 54 |
+# |--------------|--------------|--------------|
+# | 55 - 56 - 57 | 58 - 59 - 60 | 61 - 62 - 63 |
+# |    .    .    |    .    .    |    .    .    |
+# | 64 - 65 - 66 | 67 - 68 - 69 | 70 - 71 - 72 |
+# |    .    .    |    .    .    |    .    .    |
+# | 73 - 74 - 75 | 76 - 77 - 78 | 79 - 80 - 81 |
+#  --------------------------------------------
+
+# Set some constant variables for the RGB values of some standard colours
+GREEN = (0, 255, 0)
+BLUE = (0, 0, 255)
+RED = (255, 0, 0)
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+GRAY = (100, 100, 100)
+DGRAY = (30, 30, 30)
+LGRAY = (170, 170, 170)
+CREAM = (249, 239, 217)
+
+# Initialise pygame library
+def pyinit():
+
+    pygame.init()
+    # Centring the game window using os module
+    os.environ['SDL_VIDEO_WINDOW_POS'] = '200, 35'
+    # print(pygame.display.get_driver())
+
+    # set game icon as a small sudoku image
+    try:
+        icon = pygame.image.load('sudoku_resources\\sudoku_icon.bmp')
+        pygame.display.set_icon(icon)
+    except pygame.error as error_message:
+        print(error_message)
+    # set name in window tab
+    pygame.display.set_caption('Lameo Sudoku')
+
+    # global variables
+    global GAMESCREEN, CLOCK
+    # surely you have a big enough screen...
+    GAMESCREEN = pygame.display.set_mode((1000, 690))
+    CLOCK = pygame.time.Clock()
+    # background_image = pygame.image.load('sudoku_resources\\gridpaper.bmp').convert() #not big enough image..
+
+
+# ---------------------- MAKING POSITION CLASS AND OBJECTS -------------------------
+
+class Position:
+    positionlist = []  # list populated with all the created position objects -  used to access them
+    potential_click = 0
+    puzzlenumber = None
+    errorPicShown = False
+    delay = 0
+
+    def __init__(self, name):
+        self.name = name  # keep track of objects with name
+        self.start_state = 0  # identify if position has a starting value or is changeable
+        self.value = 0  # the state of the position ie an integer value or 0 as default/empty
+        self.prev_state = 0  # keep track of positions changing value
+        self.pencil_values = []  # 1 or 0 for each integer
+        self.coordinates = []  # (x, y, w, h, xcentre, ycentre)
+        self.pencil_coordinates = []  # (xcentre, ycentre) for each integers position in pencil mode
+        Position.positionlist.append(self)  # add created object to list
+
+
+def positionobjects():
+    # make position objects named '1' - '81' from left to right, top to bottom in 9x9 grid
+    for x in range(1, 82):
+        Position(str(x))
+
+    # set position coordinates
+    (a, b, c, d, e, f) = (30, 30, 70, 70, 65, 65)  # (x, y, width, height, xcentre, ycentre)
+    # set pencil coordinates for position objects
+    # each position has 9 sets containing (x, y) coordinates
+    pencil_coordinates = ((44, 44.5), (67, 44.5), (86, 44.5),
+                          (44, 67), (67, 67), (86, 67),
+                          (44, 89.5), (67, 89.5), (86, 89.5))
+
+    # adding coordinates for positions and their pencil values by iterating through each cell in each row left-right
+    for x1 in range(9):
+        for y1 in range(9):
+            index = x1*9 + y1  # the positions index in the Position list (0-80)
+            # adding coordinates to the corresponding position class objects with values based on position in grid
+            Position.positionlist[index].coordinates = (a + y1*70, b + x1*70, c, d, e + y1*70, f + x1*70)
+            # iterate through pencil coordinates and increase the values of x or y depending on it position in the grid
+            for xy_set in pencil_coordinates:
+                new_coords = (xy_set[0] + (y1 * 70), xy_set[1] + (x1 * 70))
+                Position.positionlist[index].pencil_coordinates.append(new_coords)
+
+
+# ---------------------------- MAKING BUTTONS CLASS AND GRAPHICS ---------------------------------
+
+class Button:
+    buttondict = {}
+    startbuttons = []
+    startbutdict = {}
+    activestate = None
+    pencilstate = None
+    potential_click = 0
+    prev_hover = None
+
+    def __init__(self, name):
+        self.name = name
+        self.state = 0  # default state, 1 = active
+        self.was_hovered = False
+        self.coordinates = (0, 0, 0, 0, 0, 0)
+        self.textcoords = ()
+        self.text = name
+
+    def add_dict(self):
+        Button.buttondict[self.name] = self  # add button to a dictionary with key as name and value as object
+
+    def add_startlist(self):
+        Button.startbuttons.append(self)  # add start buttons to list sequentially - 0-49=easy, 49-139=hard
+
+    def add_startdict(self):
+        Button.startbutdict[self.name] = self  # add button to a dictionary with key as name and value as object
+        pass
+
+    def clicked(self):
+        # change state to clicked or unclicked
+        if self.state == 0:
+            self.state = 1
+        else:
+            self.state = 0
+
+
+def buttonobjects():
+
+    int_list = ['', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+    buttonlist = ['setempty', 'set1', 'set2', 'set3', 'set4', 'set5', 'set6', 'set7',
+                  'set8', 'set9', 'pencil', 'clear', 'check', 'save', 'savetextbox']
+    # list of coordinates for each button: (xorigin, yorigin, width, height, xcentre, ycentre)
+    coordinateslist = [(720, 100, 65, 70, 752.5, 135), (785, 100, 65, 70, 817.5, 135),
+                       (720, 170, 65, 70, 752.5, 205), (785, 170, 65, 70, 817.5, 205),
+                       (720, 240, 65, 70, 752.5, 275), (785, 240, 65, 70, 817.5, 275),
+                       (720, 310, 65, 70, 752.5, 345), (785, 310, 65, 70, 817.5, 345),
+                       (720, 380, 65, 70, 752.5, 415), (785, 380, 65, 70, 817.5, 415),
+                       (720, 460, 130, 30, 785, 475), (720, 500, 130, 30, 785, 515),
+                       (720, 540, 130, 30, 785, 555), (720, 580, 130, 30, 785, 595),
+                       (720, 620, 130, 30, 785, 635)]
+
+    # create class objects for buttons
+    integer = 0
+    for name in buttonlist:
+        newbutton = Button(name)
+        newbutton.add_dict()
+        Button.buttondict[name].coordinates = coordinateslist[integer]
+        integer += 1
+    # change text for integer buttons - dont want the names to appear on the button graphic just the integer
+    integer = 0
+    for name in buttonlist[:10]:
+        Button.buttondict[name].text = int_list[integer]
+        integer += 1
+
+    Button.buttondict['savetextbox'].text = 'Enter File Name'
 
 
 def set_start_states(difficulty, puzzlenum):
@@ -54,86 +222,6 @@ def set_start_states(difficulty, puzzlenum):
         pos.start_state = starting_state[count]  # sets as '0' for changeable or 'int' for not
         pos.value = 'set' + starting_state[count]  # sets the position value to an integer
         count += 1
-
-
-def num_pos_pic():
-    pass
-    #  --------------------------------------------
-    # | 01 - 02 - 03 | 04 - 05 - 06 | 07 - 08 - 09 |
-    # |    .    .    |    .    .    |    .    .    |
-    # | 10 - 11 - 12 | 13 - 14 - 15 | 16 - 17 - 18 |
-    # |    .    .    |    .    .    |    .    .    |
-    # | 19 - 20 - 21 | 22 - 23 - 24 | 25 - 26 - 27 |
-    # |--------------|--------------|--------------|
-    # | 28 - 29 - 30 | 31 - 32 - 33 | 34 - 35 - 36 |
-    # |    .    .    |    .    .    |    .    .    |
-    # | 37 - 38 - 39 | 40 - 41 - 42 | 43 - 44 - 45 |
-    # |    .    .    |    .    .    |    .    .    |
-    # | 46 - 47 - 48 | 49 - 50 - 51 | 52 - 53 - 54 |
-    # |--------------|--------------|--------------|
-    # | 55 - 56 - 57 | 58 - 59 - 60 | 61 - 62 - 63 |
-    # |    .    .    |    .    .    |    .    .    |
-    # | 64 - 65 - 66 | 67 - 68 - 69 | 70 - 71 - 72 |
-    # |    .    .    |    .    .    |    .    .    |
-    # | 73 - 74 - 75 | 76 - 77 - 78 | 79 - 80 - 81 |
-    #  --------------------------------------------
-
-
-# set some constant variables for the RGB values of some standard colours
-GREEN = (0, 255, 0)
-BLUE = (0, 0, 255)
-RED = (255, 0, 0)
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-GRAY = (100, 100, 100)
-DGRAY = (30, 30, 30)
-LGRAY = (170, 170, 170)
-CREAM = (249, 239, 217)
-
-
-# ---------------------- MAKING POSITION CLASS AND OBJECTS -------------------------
-
-class Position:
-    positionlist = []  # list populated with all the created position objects -  used to access them
-    potential_click = 0
-    puzzlenumber = None
-    errorPicShown = False
-    delay = 0
-
-    def __init__(self, name):
-        self.name = name  # keep track of objects with name
-        self.start_state = 0  # identify if position has a starting value or is changeable
-        self.value = 0  # the state of the position ie an integer value or 0 as default/empty
-        self.prev_state = 0  # keep track of positions changing value
-        self.pencil_values = []  # 1 or 0 for each integer
-        self.coordinates = []  # (x, y, w, h, xcentre, ycentre)
-        self.pencil_coordinates = []  # (xcentre, ycentre) for each integers position in pencil mode
-        Position.positionlist.append(self)  # add created object to list
-
-
-def positionobjects():
-    # make position objects named '1' - '81' from left to right, top to bottom in 9x9 grid
-    for x in range(1, 82):
-        Position(str(x))
-
-    # set position coordinates
-    (a, b, c, d, e, f) = (30, 30, 70, 70, 65, 65)  # (x, y, width, height, xcentre, ycentre)
-    # set pencil coordinates for position objects
-    # each position has 9 sets containing (x, y) coordinates
-    pencil_coordinates = ((44, 44.5), (67, 44.5), (86, 44.5),
-                          (44, 67), (67, 67), (86, 67),
-                          (44, 89.5), (67, 89.5), (86, 89.5))
-
-    # adding coordinates for positions and their pencil values by iterating through each cell in each row left-right
-    for x1 in range(9):
-        for y1 in range(9):
-            index = x1*9 + y1  # the positions index in the Position list (0-80)
-            # adding coordinates to the corresponding position class objects with values based on position in grid
-            Position.positionlist[index].coordinates = (a + y1*70, b + x1*70, c, d, e + y1*70, f + x1*70)
-            # iterate through pencil coordinates and increase the values of x or y depending on it position in the grid
-            for xy_set in pencil_coordinates:
-                new_coords = (xy_set[0] + (y1 * 70), xy_set[1] + (x1 * 70))
-                Position.positionlist[index].pencil_coordinates.append(new_coords)
 
 
 def rules():
@@ -228,74 +316,6 @@ def clear_states():
             positiontext(pos)  # redraw graphics so it is empty
         else:
             pass
-
-
-# ---------------------------- MAKING BUTTONS CLASS AND GRAPHICS ---------------------------------
-
-class Button:
-    buttondict = {}
-    startbuttons = []
-    startbutdict = {}
-    activestate = None
-    pencilstate = None
-    potential_click = 0
-    prev_hover = None
-
-    def __init__(self, name):
-        self.name = name
-        self.state = 0  # default state, 1 = active
-        self.was_hovered = False
-        self.coordinates = (0, 0, 0, 0, 0, 0)
-        self.textcoords = ()
-        self.text = name
-
-    def add_dict(self):
-        Button.buttondict[self.name] = self  # add button to a dictionary with key as name and value as object
-
-    def add_startlist(self):
-        Button.startbuttons.append(self)  # add start buttons to list sequentially - 0-49=easy, 49-139=hard
-
-    def add_startdict(self):
-        Button.startbutdict[self.name] = self  # add button to a dictionary with key as name and value as object
-        pass
-
-    def clicked(self):
-        # change state to clicked or unclicked
-        if self.state == 0:
-            self.state = 1
-        else:
-            self.state = 0
-
-
-def buttonobjects():
-
-    int_list = ['', '1', '2', '3', '4', '5', '6', '7', '8', '9']
-    buttonlist = ['setempty', 'set1', 'set2', 'set3', 'set4', 'set5', 'set6', 'set7',
-                  'set8', 'set9', 'pencil', 'clear', 'check', 'save', 'savetextbox']
-    # list of coordinates for each button: (xorigin, yorigin, width, height, xcentre, ycentre)
-    coordinateslist = [(720, 100, 65, 70, 752.5, 135), (785, 100, 65, 70, 817.5, 135),
-                       (720, 170, 65, 70, 752.5, 205), (785, 170, 65, 70, 817.5, 205),
-                       (720, 240, 65, 70, 752.5, 275), (785, 240, 65, 70, 817.5, 275),
-                       (720, 310, 65, 70, 752.5, 345), (785, 310, 65, 70, 817.5, 345),
-                       (720, 380, 65, 70, 752.5, 415), (785, 380, 65, 70, 817.5, 415),
-                       (720, 460, 130, 30, 785, 475), (720, 500, 130, 30, 785, 515),
-                       (720, 540, 130, 30, 785, 555), (720, 580, 130, 30, 785, 595),
-                       (720, 620, 130, 30, 785, 635)]
-
-    # create class objects for buttons
-    integer = 0
-    for name in buttonlist:
-        newbutton = Button(name)
-        newbutton.add_dict()
-        Button.buttondict[name].coordinates = coordinateslist[integer]
-        integer += 1
-    # change text for integer buttons - dont want the names to appear on the button graphic just the integer
-    integer = 0
-    for name in buttonlist[:10]:
-        Button.buttondict[name].text = int_list[integer]
-        integer += 1
-
-    Button.buttondict['savetextbox'].text = 'Enter File Name'
 
 
 def get_text(size, text, text_col, coords, back_col=None, align=None):
@@ -726,30 +746,6 @@ def gametimer(mins, secs, paused=False):
 
 
 # ---------------------------- START SCREEN AND GAME LOOP ----------------------------------
-
-
-def pyinit():
-
-    pygame.init()
-    # Centring the game window using os module
-    os.environ['SDL_VIDEO_WINDOW_POS'] = '200, 35'
-    # print(pygame.display.get_driver())
-
-    # set game icon as a small sudoku image
-    try:
-        icon = pygame.image.load('sudoku_resources\\sudoku_icon.bmp')
-        pygame.display.set_icon(icon)
-    except pygame.error as error_message:
-        print(error_message)
-    # set name in window tab
-    pygame.display.set_caption('Lameo Sudoku')
-
-    # global variables
-    global GAMESCREEN, CLOCK
-    GAMESCREEN = pygame.display.set_mode((1000, 690))
-    CLOCK = pygame.time.Clock()
-    # background_image = pygame.image.load('sudoku_resources\\gridpaper.bmp').convert() #not big enough image..
-
 
 def startscreen():
 
@@ -1356,5 +1352,5 @@ def main():
     mainloop()
 
 
-main()
-
+if __name__ == '__main__':
+    main()
