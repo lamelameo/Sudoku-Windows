@@ -413,7 +413,7 @@ def startscreenhover():
 
     def clearhovered():
         # if no button is hovered, then have to check for a previous frame hover and update the buttons outline
-        if Button.prev_hover is not None:
+        if Button.prev_hover:
             # print('no current hover - but previous')
             if Button.prev_hover.name[:4] == "load":  # redraw load outlines black
                 pygame.draw.rect(GAMESCREEN, BLACK, Button.prev_hover.coordinates[:4], 1)
@@ -450,9 +450,9 @@ def startscreenhover():
     easy_index = index_in_grid(mouse_pos, 45, 270, 190, 640, 45, 5)
     hard_index = index_in_grid(mouse_pos, 550, 955, 190, 640, 45, 9)
     # check if a hover occurred in any region and process it, else clear hover from previous frame
-    if easy_index is not None:
+    if easy_index:
         hoveroutline(Button.startbuttons[easy_index], RED)
-    elif hard_index is not None:
+    elif hard_index:
         hoveroutline(Button.startbuttons[50 + hard_index], GREEN)
     elif searchhovered(280, 540, 190, 650):
         pass  # function processes a hover
@@ -543,13 +543,13 @@ def draw_startbuttons(textcolour=BLACK, boxcolour=None, text1=None, size=16, tex
                       boxcoords=None, textalign=None, boxfill=None):
     # TODO: redundant function?
     # draws a button outline
-    if boxcoords is not None:
-        if boxfill is not None:
+    if boxcoords:
+        if boxfill:
             pygame.draw.rect(GAMESCREEN, boxfill, boxcoords)
-        if boxcolour is not None:
+        if boxcolour:
             pygame.draw.rect(GAMESCREEN, boxcolour, boxcoords, 1)
     # draws button text
-    if textcoords is not None:
+    if textcoords:
         if textalign == 'midleft':  # align button text to left of box
             get_text(size, text1, textcolour, textcoords, align="midleft")
         else:  # default text align is centre
@@ -768,7 +768,7 @@ def startscreen():
                 if 45 < event.pos[0] < 270 and 190 < event.pos[1] < 640:
                     # click is on a button with this index, or is None if on an edge
                     easy_index = index_in_grid(event.pos, 45, 270, 190, 640, 45, 5)
-                    if easy_index is not None:
+                    if easy_index:
                         # determine puzzle number and set starting states using that information
                         num = easy_index + 1  # puzzlenum is 1 greater than index
                         set_start_states(0, num)
@@ -778,7 +778,7 @@ def startscreen():
                 # encompasses all hard state buttons, same function as easy
                 elif 550 < event.pos[0] < 955 and 190 < event.pos[1] < 640:
                     hard_index = index_in_grid(event.pos, 550, 955, 190, 640, 45, 9)
-                    if hard_index is not None:
+                    if hard_index:
                         num = hard_index + 1
                         set_start_states(1, num)
                         Position.puzzlenumber = 'hard' + str(num)
@@ -822,7 +822,7 @@ def startscreen():
                         if b.name == 'fileload':
                             # if clicked - if a loadfile is selected - load that file - if not, do nothing
                             # can be active while other button is active?
-                            if Button.activestate is not None:
+                            if Button.activestate:
                                 try:  # load the starting state from the filename linked to the active load button
                                     loadgame(Button.startbutdict[Button.activestate].text)
                                 except (IndexError, ValueError) as errors:
@@ -834,7 +834,7 @@ def startscreen():
 
                         elif b.name == 'searchbox':
                             # redraw previously active loadfile button
-                            if Button.activestate is not None:
+                            if Button.activestate:
                                 prevbut = Button.startbutdict[Button.activestate]
                                 draw_startbuttons(text1=prevbut.text, textcolour=GRAY, textcoords=prevbut.textcoords,
                                                   textalign='midleft', boxcoords=prevbut.coordinates, boxfill=BLACK)
@@ -864,7 +864,7 @@ def startscreen():
                                                       boxcolour=WHITE, boxcoords=b.coordinates, textalign='midleft',
                                                       boxfill=BLUE)
 
-                                elif Button.activestate is not None:  # if a button was active
+                                elif Button.activestate:  # if a button was active
                                     if Button.activestate == b.name:  # if clicked button is active
                                         Button.activestate = None  # turn it off
                                         # redraw the button
@@ -1014,7 +1014,7 @@ def resetboard():
             positiontext(pos, WHITE)
         elif pos.start_state == '0':
             if pos.value == 'set0':
-                if pos.pencil_values is not []:  # have pencil values
+                if pos.pencil_values:  # have pencil values
                     for val2 in pos.pencil_values:
                         penciltext(pos, mode='load', value=val2)
             else:
@@ -1027,7 +1027,6 @@ def mainloop(timer=0, load=False):
     pygame.display.set_mode((900, 690))
     # background images that dont need redrawing each loop:
     GAMESCREEN.fill(BLACK)  # draws over the startscreen graphics for a black background
-    drawboard(BLACK, BLUE)  # draws game board
 
     # reset active button to none so no errors occur in event processing a new active button for first time in new loop
     Button.activestate = None
@@ -1061,19 +1060,7 @@ def mainloop(timer=0, load=False):
         for pos in Position.positionlist:
             positiontext(pos, WHITE)
     elif load is True:
-        for pos in Position.positionlist:
-            # starting values drawn
-            if pos.start_state != '0':
-                positiontext(pos, WHITE)
-            # loaded changeable values and pencil values drawn
-            elif pos.start_state == '0':
-                # if no position value, check for pencil values to be drawn
-                if pos.value == 'set0':
-                    if pos.pencil_values is not []:  # no pencil values
-                        for val in pos.pencil_values:
-                            penciltext(pos, mode='load', value=val)
-                else:  # position has value to be drawn
-                    positiontext(pos, BLUE)
+        resetboard()
 
     # main game loop starts here with a while loop that is broken by returning False
     while True:
@@ -1123,9 +1110,9 @@ def mainloop(timer=0, load=False):
                             break  # stop searching buttons as only one is active each frame
 
                     # check if any position was clicked only if a button is active, and there was no click on a button
-                    if Button.activestate is not None and skip == 0:
+                    if Button.activestate and skip == 0:
                         pos_index = index_in_grid(event.pos, 30, 660, 30, 660, 70, 9)
-                        if pos_index is not None:
+                        if pos_index:
                             clicked_pos = Position.positionlist[pos_index]
                             # set a variable in Position class only for changeable positions so upclicks can be
                             # rejected if they did not pass all these checks for a click on a position
@@ -1196,12 +1183,13 @@ def mainloop(timer=0, load=False):
                                     b.state = 1
                                     # Button.buttondict['savetextbox'].text = ''
                                     drawbutton(b, BLUE)
+                            # TODO: this block could be its own function, used it twice
                             else:  # for the remaining buttons, only one can be active at a time
                                 b.clicked()
                                 if Button.activestate is None:  # if no button was active:
                                     Button.activestate = b.name  # set active to clicked button
                                     drawbutton(b, fill=DGRAY)
-                                elif Button.activestate is not None:  # if a button was active
+                                elif Button.activestate:  # if a button was active
                                     if Button.activestate == b.name:  # if clicked button is active
                                         Button.activestate = None  # turn it off
                                         drawbutton(b)
@@ -1257,7 +1245,7 @@ def mainloop(timer=0, load=False):
                         if Button.activestate is None:  # if no button was active:
                             Button.activestate = b.name  # set active to clicked button
                             drawbutton(b, fill=DGRAY)
-                        elif Button.activestate is not None:  # if a button was active
+                        elif Button.activestate:  # if a button was active
                             if Button.activestate == b.name:  # if clicked button is active
                                 Button.activestate = None  # turn it off
                                 drawbutton(b)
