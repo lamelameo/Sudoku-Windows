@@ -37,6 +37,7 @@ DGRAY = (30, 30, 30)
 LGRAY = (170, 170, 170)
 CREAM = (249, 239, 217)
 
+
 # Initialise pygame library
 def pyinit():
 
@@ -134,7 +135,6 @@ class Button:
 
     def add_startdict(self):
         Button.startbutdict[self.name] = self  # add button to a dictionary with key as name and value as object
-        pass
 
     def clicked(self):
         # change state to clicked or unclicked
@@ -251,18 +251,12 @@ def rules():
             newcolumn.append(rows[num2][num1])
 
     # making blocks
-    counter2 = 0
     # append 9 blocks into block list before adding values as we add values to more than one block each loop
     for num1 in range(9):
         newblock = []
         blocks.append(newblock)
     for num1 in range(9):  # for each row
-        if num1 in [0, 1, 2]:
-            counter2 = 0  # for first 3 rows insert into first 3 blocks
-        elif num1 in [3, 4, 5]:
-            counter2 = 3  # for 2nd 3 rows insert into middle 3 blocks
-        elif num1 in [6, 7, 8]:
-            counter2 = 6  # for 3rd 3 rows insert into last 3 blocks
+        counter2 = num1 // 3 * 3
         for num2 in range(3):  # for each position in the row (3 x 3 nested loops)
             for num3 in range(3):  # append groups of 3 values from that row into 3 the blocks that overlap that row
                 index = num2*3 + num3
@@ -314,8 +308,6 @@ def clear_states():
         if pos.start_state == '0':
             pos.value = 'set0'  # reset value
             positiontext(pos)  # redraw graphics so it is empty
-        else:
-            pass
 
 
 def get_text(size, text, text_col, coords, back_col=None, align=None):
@@ -450,9 +442,9 @@ def startscreenhover():
     easy_index = index_in_grid(mouse_pos, 45, 270, 190, 640, 45, 5)
     hard_index = index_in_grid(mouse_pos, 550, 955, 190, 640, 45, 9)
     # check if a hover occurred in any region and process it, else clear hover from previous frame
-    if easy_index:
+    if easy_index is not None:  # TODO: keep is not None as easy_index can be 0
         hoveroutline(Button.startbuttons[easy_index], RED)
-    elif hard_index:
+    elif hard_index is not None:
         hoveroutline(Button.startbuttons[50 + hard_index], GREEN)
     elif searchhovered(280, 540, 190, 650):
         pass  # function processes a hover
@@ -560,11 +552,13 @@ def startscreenbuttons():
     # function creates all the buttons in the startscreen
 
     def incrementbuttons(boxcoords, textcoords, numboxes, colour, text):
-
+        # coordinates are in the form [x, y, width, height]
         [a, b, c, d] = boxcoords
+        # x, y position of textbox (centred at this position)
         [e, f] = textcoords
         counter = 1
-        # make a button object for each puzzle number (1-50), add its coordinates, and draw the button
+        # make a button object for each puzzle number easy(1-50) hard(1-90), add its coordinates, and draw the button
+        # increment row by row from left to right ie numbers 1-50 or 1-90 in order
         for x in range(10):
             for y in range(int(numboxes/10)):
                 buttontext = text + str(counter)
@@ -574,8 +568,10 @@ def startscreenbuttons():
                 draw_startbuttons(text1=buttontext[4:], boxcolour=GRAY, textcolour=colour,
                                   textcoords=[e, f], boxcoords=[a, b, c, d])
                 counter += 1
+                # increment x coords
                 a += 45
                 e += 45
+            # reset x coords at new row and increment y coords
             a = boxcoords[0]
             e = textcoords[0]
             b += 45
@@ -622,7 +618,7 @@ def startscreenbuttons():
     # make button objects for each load space (15 max shown at any time)
     [a, b, c, d] = [281, 235, 258, 25]
     [e, f] = [290, 247.5]
-
+    # vertically stacked buttons, so increment by y coords only
     for x in range(1, 16):
         newbutt = Button("load"+str(x))
         Button.add_startdict(newbutt)
@@ -632,6 +628,7 @@ def startscreenbuttons():
         f += 25
 
 
+# search files in save folder when user clicks search button
 def searchfiles(searchterm):
     # TODO: bug - search test and no results appear, when clearly i have files with test in the name
 
@@ -647,6 +644,7 @@ def searchfiles(searchterm):
         loadbutton.text = loadbutton.name  # reset text so buttons cannot be hovered unless more text is entered
         draw_startbuttons(boxfill=BLACK, boxcoords=loadbutton.coordinates)
 
+    # check .txt items in savefile directory
     for child in savedir.iterdir():
         # open textfiles and check if they are valid save files
         if child.suffix == '.txt':
@@ -686,7 +684,7 @@ def searchfiles(searchterm):
 # ---------------------- DRAWING THE SUDOKU GAME BOARD --------------------------------------
 #                       630 x 630 size is divisible by 9
 
-def drawboard(back_colour=BLACK, line_colour=BLACK):
+def drawboard(back_colour=BLACK, line_colour=BLUE):
     # board background colour
     pygame.draw.rect(GAMESCREEN, back_colour, [20, 20, 650, 650])
     # bold outer/block lines
@@ -762,13 +760,14 @@ def startscreen():
                 pygame.quit()
                 sys.exit()
 
-            # process downclicks on
+            # process downclicks
             elif event.type == MOUSEBUTTONDOWN and event.button == 1:
                 # encompasses all easy state buttons
                 if 45 < event.pos[0] < 270 and 190 < event.pos[1] < 640:
                     # click is on a button with this index, or is None if on an edge
                     easy_index = index_in_grid(event.pos, 45, 270, 190, 640, 45, 5)
-                    if easy_index:
+                    # TODO: must keep is not None as easy index can be 0, which will pass if we use "if easy_index:"
+                    if easy_index is not None:
                         # determine puzzle number and set starting states using that information
                         num = easy_index + 1  # puzzlenum is 1 greater than index
                         set_start_states(0, num)
@@ -778,7 +777,7 @@ def startscreen():
                 # encompasses all hard state buttons, same function as easy
                 elif 550 < event.pos[0] < 955 and 190 < event.pos[1] < 640:
                     hard_index = index_in_grid(event.pos, 550, 955, 190, 640, 45, 9)
-                    if hard_index:
+                    if hard_index is not None:
                         num = hard_index + 1
                         set_start_states(1, num)
                         Position.puzzlenumber = 'hard' + str(num)
@@ -1027,6 +1026,7 @@ def mainloop(timer=0, load=False):
     pygame.display.set_mode((900, 690))
     # background images that dont need redrawing each loop:
     GAMESCREEN.fill(BLACK)  # draws over the startscreen graphics for a black background
+    drawboard()
 
     # reset active button to none so no errors occur in event processing a new active button for first time in new loop
     Button.activestate = None
@@ -1112,7 +1112,7 @@ def mainloop(timer=0, load=False):
                     # check if any position was clicked only if a button is active, and there was no click on a button
                     if Button.activestate and skip == 0:
                         pos_index = index_in_grid(event.pos, 30, 660, 30, 660, 70, 9)
-                        if pos_index:
+                        if pos_index is not None:  # TODO: pos index can be 0 so keep is not None
                             clicked_pos = Position.positionlist[pos_index]
                             # set a variable in Position class only for changeable positions so upclicks can be
                             # rejected if they did not pass all these checks for a click on a position
