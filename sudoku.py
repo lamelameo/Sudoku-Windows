@@ -1062,198 +1062,198 @@ def mainloop(timer=0, load=False):
     elif load is True:
         resetboard()
 
-    # main game loop starts here with a while loop that is broken by returning False
-    while True:
+    def event_check():  # Function that checks and processes events during game loop - eg clicks/typing
+        # code was getting big so put in its own function
 
-        def event_check():  # Function that checks and processes events during game loop - eg clicks/typing
-            # code was getting big so put in its own function
+        # TODO: ------ SET EACH TYPE OF EVENT CHECK TO ITS OWN FUNCTION OUTSIDE OF LOOP AND CALL ??? ------
 
-            # TODO: ------ SET EACH TYPE OF EVENT CHECK TO ITS OWN FUNCTION OUTSIDE OF LOOP AND CALL ??? ------
+        for event in pygame.event.get():
 
-            for event in pygame.event.get():
+            if event.type == QUIT:
+                pygame.quit()
+                sys.exit()
 
-                if event.type == QUIT:
-                    pygame.quit()
-                    sys.exit()
+            # First checking for a left downclick in a button or position then for an upclick
+            # Functionality: A (left) mouseclick interacts with a button/position object only if the downclick
+            # and then corresponding upclick occur in the object; other mouseclicks wont register as
+            # either downclicks or upclicks. Long holds register as 1 click, upclicks outside the object
+            # do not register (for change of mind), and downclick outside the object followed by upclick
+            # inside the object do not register
 
-                # First checking for a left downclick in a button or position then for an upclick
-                # Functionality: A (left) mouseclick interacts with a button/position object only if the downclick
-                # and then corresponding upclick occur in the object; other mouseclicks wont register as
-                # either downclicks or upclicks. Long holds register as 1 click, upclicks outside the object
-                # do not register (for change of mind), and downclick outside the object followed by upclick
-                # inside the object do not register
+            elif event.type == MOUSEBUTTONDOWN and event.button == 1:
+                # TODO: could change to methods in classes eg onDown, onUp
+                skip = 0
+                # check if board is displaying error pic to be removed on board click and redraw position values
+                if Position.errorPicShown:
+                    # if clicked on board
+                    if 20 < event.pos[0] < 670 and 20 < event.pos[1] < 670:
+                        # reset relevant attributes/graphics
+                        Position.delay = 0
+                        resetboard()
+                        Position.errorPicShown = False  # reset attribute
+                        skip = 1
 
-                elif event.type == MOUSEBUTTONDOWN and event.button == 1:
-                    # TODO: could change to methods in classes eg onDown, onUp
-                    skip = 0
-                    # check if board is displaying error pic to be removed on board click and redraw position values
-                    if Position.errorPicShown:
-                        # if clicked on board
-                        if 20 < event.pos[0] < 670 and 20 < event.pos[1] < 670:
-                            # reset relevant attributes/graphics
-                            Position.delay = 0
-                            resetboard()
-                            Position.errorPicShown = False  # reset attribute
-                            skip = 1
+                # check for each button, if it was clicked
+                for but in Button.buttondict:
+                    b = Button.buttondict[but]
+                    x = b.coordinates[0]
+                    y = b.coordinates[1]
+                    w = b.coordinates[2]
+                    h = b.coordinates[3]
+                    if x < event.pos[0] < x + w and y < event.pos[1] < y + h:
+                        Button.potential_click = b  # set to remove unnecessary checks through
+                        # buttondict on every mouse upclick - same as for position
+                        skip = 1  # set skip to 1 if button set active so positions arent also checked
+                        break  # stop searching buttons as only one is active each frame
 
-                    # check for each button, if it was clicked
-                    for but in Button.buttondict:
-                        b = Button.buttondict[but]
-                        x = b.coordinates[0]
-                        y = b.coordinates[1]
-                        w = b.coordinates[2]
-                        h = b.coordinates[3]
-                        if x < event.pos[0] < x + w and y < event.pos[1] < y + h:
-                            Button.potential_click = b  # set to remove unnecessary checks through
-                            # buttondict on every mouse upclick - same as for position
-                            skip = 1  # set skip to 1 if button set active so positions arent also checked
-                            break  # stop searching buttons as only one is active each frame
+                # check if any position was clicked only if a button is active, and there was no click on a button
+                if Button.activestate and skip == 0:
+                    pos_index = index_in_grid(event.pos, 30, 660, 30, 660, 70, 9)
+                    if pos_index is not None:  # TODO: pos index can be 0 so keep is not None
+                        clicked_pos = Position.positionlist[pos_index]
+                        # set a variable in Position class only for changeable positions so upclicks can be
+                        # rejected if they did not pass all these checks for a click on a position
+                        if clicked_pos.start_state == '0':
+                            Position.potential_click = clicked_pos
 
-                    # check if any position was clicked only if a button is active, and there was no click on a button
-                    if Button.activestate and skip == 0:
-                        pos_index = index_in_grid(event.pos, 30, 660, 30, 660, 70, 9)
-                        if pos_index is not None:  # TODO: pos index can be 0 so keep is not None
-                            clicked_pos = Position.positionlist[pos_index]
-                            # set a variable in Position class only for changeable positions so upclicks can be
-                            # rejected if they did not pass all these checks for a click on a position
-                            if clicked_pos.start_state == '0':
-                                Position.potential_click = clicked_pos
+            # Checks if a left mouse button upclick occurs. Process button/position clicks only if a potential click
+            # has been registered from a downclick in the Position/Button classes. Do not have to check
+            # for button.activestate as downclick is only confirmed if activestate is not None. Deactivate the
+            # save text box if the upclick occurred anywhere outside of it.
+            elif event.type == MOUSEBUTTONUP and event.button == 1:
+                # track the state of save text box, if any click outside of it occurs, then make it inactive
+                textbox_active = False
+                # If a downclick occurred on a Position object, it will be stored in the potential_click variable
+                # else it will be None, isinstance checks this and removes IDE warnings when using that variable
+                if isinstance(Position.potential_click, Position):
+                    p = Position.potential_click  # the position object which has been clicked (as set above)
+                    x1 = p.coordinates[0]
+                    y1 = p.coordinates[1]
+                    w1 = p.coordinates[2]
+                    h1 = p.coordinates[3]
+                    # if the upclick occurs in the same Position as downclicked, then it is a confirmed click
+                    if x1 < event.pos[0] < x1 + w1 and y1 < event.pos[1] < y1 + h1:
+                        if Button.pencilstate == 1:  # pencil button is active, change Position pencil value
+                            if Button.activestate == 'setempty':  # eraser is active, remove all pencil values
+                                p.pencil_values = []
+                                penciltext(p)
+                            else:  # if an integer button is active
+                                if Button.activestate in p.pencil_values:  # remove pencil int if in position
+                                    penciltext(p, 'delete')
+                                    # remove value after redrawing as function needs the pencilvalue index
+                                    p.pencil_values.remove(Button.activestate)
+                                else:  # add pencil int if not in position
+                                    p.pencil_values.append(Button.activestate)
+                                    penciltext(p, 'add')  # draw after adding
+                        else:  # inactive pencil button, change Position value
+                            if p.value == 'set0':  # position empty, add the value of the active button
+                                p.value = Button.activestate
+                            elif p.value == Button.activestate:  # position value same as button, clear Position
+                                p.value = 'set0'
+                            else:  # position value different to the active button state, change to button value
+                                p.value = Button.activestate
+                            # redraws the position text if a state change has occurred (calls penciltext if needed)
+                            positiontext(p)
 
-                # Checks if a left mouse button upclick occurs. Process button/position clicks only if a potential click
-                # has been registered from a downclick in the Position/Button classes. Do not have to check
-                # for button.activestate as downclick is only confirmed if activestate is not None. Deactivate the
-                # save text box if the upclick occurred anywhere outside of it.
-                elif event.type == MOUSEBUTTONUP and event.button == 1:
-                    # track the state of save text box, if any click outside of it occurs, then make it inactive
-                    textbox_active = False
-                    # If a downclick occurred on a Position object, it will be stored in the potential_click variable
-                    # else it will be None, isinstance checks this and removes IDE warnings when using that variable
-                    if isinstance(Position.potential_click, Position):
-                        p = Position.potential_click  # the position object which has been clicked (as set above)
-                        x1 = p.coordinates[0]
-                        y1 = p.coordinates[1]
-                        w1 = p.coordinates[2]
-                        h1 = p.coordinates[3]
-                        # if the upclick occurs in the same Position as downclicked, then it is a confirmed click
-                        if x1 < event.pos[0] < x1 + w1 and y1 < event.pos[1] < y1 + h1:
-                            if Button.pencilstate == 1:  # pencil button is active, change Position pencil value
-                                if Button.activestate == 'setempty':  # eraser is active, remove all pencil values
-                                    p.pencil_values = []
-                                    penciltext(p)
-                                else:  # if an integer button is active
-                                    if Button.activestate in p.pencil_values:  # remove pencil int if in position
-                                        penciltext(p, 'delete')
-                                        # remove value after redrawing as function needs the pencilvalue index
-                                        p.pencil_values.remove(Button.activestate)
-                                    else:  # add pencil int if not in position
-                                        p.pencil_values.append(Button.activestate)
-                                        penciltext(p, 'add')  # draw after adding
-                            else:  # inactive pencil button, change Position value
-                                if p.value == 'set0':  # position empty, add the value of the active button
-                                    p.value = Button.activestate
-                                elif p.value == Button.activestate:  # position value same as button, clear Position
-                                    p.value = 'set0'
-                                else:  # position value different to the active button state, change to button value
-                                    p.value = Button.activestate
-                                # redraws the position text if a state change has occurred (calls penciltext if needed)
-                                positiontext(p)
+                    # reset potential click regardless of outcome as full click rotation has occurred
+                    Position.potential_click = 0
 
-                        # reset potential click regardless of outcome as full click rotation has occurred
-                        Position.potential_click = 0
-
-                    elif Button.potential_click != 0:
-                        b = Button.potential_click  # the button object which has been downclicked (as set above)
-                        x = b.coordinates[0]
-                        y = b.coordinates[1]
-                        w = b.coordinates[2]
-                        h = b.coordinates[3]
-                        # upclick occurred in same button as downclick, process confirmed click
-                        if x < event.pos[0] < x + w and y < event.pos[1] < y + h:
-                            if b.name == 'pencil':  # pencil code is separate so can be on at same time as other buttons
-                                b.clicked()  # change state of button
-                                if b.state == 1:  # pencil button now active, update object and graphic
-                                    Button.pencilstate = 1
-                                    drawbutton(b, fill=DGRAY)
-                                else:  # pencil button now inactive
-                                    Button.pencilstate = None
+                elif Button.potential_click != 0:
+                    b = Button.potential_click  # the button object which has been downclicked (as set above)
+                    x = b.coordinates[0]
+                    y = b.coordinates[1]
+                    w = b.coordinates[2]
+                    h = b.coordinates[3]
+                    # upclick occurred in same button as downclick, process confirmed click
+                    if x < event.pos[0] < x + w and y < event.pos[1] < y + h:
+                        if b.name == 'pencil':  # pencil code is separate so can be on at same time as other buttons
+                            b.clicked()  # change state of button
+                            if b.state == 1:  # pencil button now active, update object and graphic
+                                Button.pencilstate = 1
+                                drawbutton(b, fill=DGRAY)
+                            else:  # pencil button now inactive
+                                Button.pencilstate = None
+                                drawbutton(b)
+                        elif b.name == 'savetextbox':  # save text box can also be active at same time as others
+                            textbox_active = True
+                            if b.state != 1:  # if it is not active, make it, else leave it active
+                                b.state = 1
+                                # Button.buttondict['savetextbox'].text = ''
+                                drawbutton(b, BLUE)
+                        # TODO: this block could be its own function, used it twice
+                        else:  # for the remaining buttons, only one can be active at a time
+                            b.clicked()
+                            if Button.activestate is None:  # if no button was active:
+                                Button.activestate = b.name  # set active to clicked button
+                                drawbutton(b, fill=DGRAY)
+                            elif Button.activestate:  # if a button was active
+                                if Button.activestate == b.name:  # if clicked button is active
+                                    Button.activestate = None  # turn it off
                                     drawbutton(b)
-                            elif b.name == 'savetextbox':  # save text box can also be active at same time as others
-                                textbox_active = True
-                                if b.state != 1:  # if it is not active, make it, else leave it active
-                                    b.state = 1
-                                    # Button.buttondict['savetextbox'].text = ''
-                                    drawbutton(b, BLUE)
-                            # TODO: this block could be its own function, used it twice
-                            else:  # for the remaining buttons, only one can be active at a time
-                                b.clicked()
-                                if Button.activestate is None:  # if no button was active:
-                                    Button.activestate = b.name  # set active to clicked button
+                                else:  # another button was active, reset/redraw it before updating clicked Button
+                                    Button.buttondict[Button.activestate].clicked()  # previous
+                                    drawbutton(Button.buttondict[Button.activestate])  # previous
+                                    Button.activestate = b.name  # turn on clicked button
                                     drawbutton(b, fill=DGRAY)
-                                elif Button.activestate:  # if a button was active
-                                    if Button.activestate == b.name:  # if clicked button is active
-                                        Button.activestate = None  # turn it off
-                                        drawbutton(b)
-                                    else:  # another button was active, reset/redraw it before updating clicked Button
-                                        Button.buttondict[Button.activestate].clicked()  # previous
-                                        drawbutton(Button.buttondict[Button.activestate])  # previous
-                                        Button.activestate = b.name  # turn on clicked button
-                                        drawbutton(b, fill=DGRAY)
 
-                        # reset potential click to 0 as a full click has occurred
-                        # and need to be able to change to 1 to signify a new button click
-                        Button.potential_click = 0
+                    # reset potential click to 0 as a full click has occurred
+                    # and need to be able to change to 1 to signify a new button click
+                    Button.potential_click = 0
 
-                    # if a click occurred outside of save text box, then deactivate it
-                    if not textbox_active:
-                        Button.buttondict['savetextbox'].state = 0
-                        if Button.buttondict['savetextbox'].text == '':
-                            Button.buttondict['savetextbox'].text = 'Enter File Name'
-                            drawbutton(Button.buttondict['savetextbox'], DGRAY)
-                        else:
-                            drawbutton(Button.buttondict['savetextbox'], DGRAY)
+                # if a click occurred outside of save text box, then deactivate it
+                if not textbox_active:
+                    Button.buttondict['savetextbox'].state = 0
+                    if Button.buttondict['savetextbox'].text == '':
+                        Button.buttondict['savetextbox'].text = 'Enter File Name'
+                        drawbutton(Button.buttondict['savetextbox'], DGRAY)
+                    else:
+                        drawbutton(Button.buttondict['savetextbox'], DGRAY)
 
-                # functionality to change button state using integer keys
-                elif event.type == KEYDOWN:
-                    savebox = Button.buttondict['savetextbox']
-                    # textbox to enter a file name
-                    if savebox.state == 1:
-                        # remove default message when clicked, so user can enter a file name
-                        if savebox.text == 'Enter File Name':
-                            savebox.text = ''
-                        # update the text box as user enters characters
-                        if event.key in range(32, 127):  # includes all standard characters on a keyboard
-                            if len(savebox.text) < 12:
-                                savebox.text += event.unicode
-                                drawbutton(savebox, BLUE)
-                            else:
-                                print('File name 12 characters max!')
-                        elif event.key == 8:  # if backspace pressed remove last character
-                            savebox.text = savebox.text[:-1]
+            # functionality to change button state using integer keys
+            elif event.type == KEYDOWN:
+                savebox = Button.buttondict['savetextbox']
+                # textbox to enter a file name
+                if savebox.state == 1:
+                    # remove default message when clicked, so user can enter a file name
+                    if savebox.text == 'Enter File Name':
+                        savebox.text = ''
+                    # update the text box as user enters characters
+                    if event.key in range(32, 127):  # includes all standard characters on a keyboard
+                        if len(savebox.text) < 12:
+                            savebox.text += event.unicode
                             drawbutton(savebox, BLUE)
                         else:
-                            print('Invalid character...')
-                    else:  # interaction with number keys to change active button
-                        try:
-                            i = int(event.unicode)
-                        except ValueError:
-                            break
+                            print('File name 12 characters max!')
+                    elif event.key == 8:  # if backspace pressed remove last character
+                        savebox.text = savebox.text[:-1]
+                        drawbutton(savebox, BLUE)
+                    else:
+                        print('Invalid character...')
+                else:  # interaction with number keys to change active button
+                    try:
+                        i = int(event.unicode)
+                    except ValueError:
+                        break
 
-                        numlist = ['setempty', 'set1', 'set2', 'set3', 'set4', 'set5', 'set6', 'set7',
-                                   'set8', 'set9']
-                        b = Button.buttondict[numlist[i]]
-                        b.clicked()
-                        if Button.activestate is None:  # if no button was active:
-                            Button.activestate = b.name  # set active to clicked button
+                    numlist = ['setempty', 'set1', 'set2', 'set3', 'set4', 'set5', 'set6', 'set7',
+                               'set8', 'set9']
+                    b = Button.buttondict[numlist[i]]
+                    b.clicked()
+                    if Button.activestate is None:  # if no button was active:
+                        Button.activestate = b.name  # set active to clicked button
+                        drawbutton(b, fill=DGRAY)
+                    elif Button.activestate:  # if a button was active
+                        if Button.activestate == b.name:  # if clicked button is active
+                            Button.activestate = None  # turn it off
+                            drawbutton(b)
+                        else:  # if another button was active
+                            Button.buttondict[Button.activestate].clicked()  # reset previous active button
+                            drawbutton(Button.buttondict[Button.activestate])  # redraw previous active button
+                            Button.activestate = b.name  # turn on clicked button
                             drawbutton(b, fill=DGRAY)
-                        elif Button.activestate:  # if a button was active
-                            if Button.activestate == b.name:  # if clicked button is active
-                                Button.activestate = None  # turn it off
-                                drawbutton(b)
-                            else:  # if another button was active
-                                Button.buttondict[Button.activestate].clicked()  # reset previous active button
-                                drawbutton(Button.buttondict[Button.activestate])  # redraw previous active button
-                                Button.activestate = b.name  # turn on clicked button
-                                drawbutton(b, fill=DGRAY)
+
+    # main game loop starts here with a while loop that is broken by returning False
+    while True:
 
         event_check()
 
